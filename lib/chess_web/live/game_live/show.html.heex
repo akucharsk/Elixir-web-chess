@@ -1,0 +1,43 @@
+
+<.header>
+  Game <%= @game.id %>
+  <:subtitle>This is a game record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/games/#{@game}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit game</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Result"><%= @game.result %></:item>
+  <:item title="Score"><%= @game.score %></:item>
+  <:item title="Pen"><%= @game.pen %></:item>
+  <:item title="Fen"><%= @game.fen %></:item>
+  <:item title="White"><%= @white_player %></:item>
+  <:item title="Black"><%= @black_player %></:item>
+</.list>
+
+<.back navigate={~p"/games"}>Back to games</.back>
+
+<%!-- <.modal :if={@live_action == :edit} id="game-modal" show on_cancel={JS.patch(~p"/games/#{@game}")}>
+  <.live_component
+    module={ChessWeb.GameLive.FormComponent}
+    id={@game.id}
+    title={@page_title}
+    action={@live_action}
+    game={@game}
+    patch={~p"/games/#{@game}"}
+  />
+</.modal> --%>
+
+<.modal :if={@pending} id="pending-game-modal" show on_cancel={JS.push("exit_pending_game")}>
+  Waiting for players
+</.modal>
+
+<.live_component
+  module={ChessWeb.GameLive.ChessboardComponent}
+  id={@game.id}
+  game={@game}
+  action={@live_action}
+/>

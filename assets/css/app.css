@@ -1,0 +1,32 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* This file is for your main application CSS */
+
+.chessboard {
+    display: inline-block;
+    border: 2px solid #333;
+  }
+  
+  .chess-row {
+    display: flex;
+  }
+  
+  .white-square, .black-square {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: bold;
+  }
+  
+  .white-square {
+    background-color: #f0d9b5;
+  }
+  
+  .black-square {
+    background-color: #b58863;
+  }
