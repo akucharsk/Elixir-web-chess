@@ -25,8 +25,14 @@ defmodule ChessWeb.UserSocket do
   # See `Phoenix.Token` documentation for examples in
   # performing token verification on connect.
   @impl true
-  def connect(_params, socket, _connect_info) do
-    {:ok, socket}
+  def connect(%{"token" => token}, socket, _connect_info) do
+    max_age = 100 * 365 * 24 * 60 * 60 # 100 years, for development purposes
+    case Phoenix.Token.verify(socket, "user socket", token, max_age: max_age) do
+      {:ok, user_id} ->
+        {:ok, assign(socket, :current_user_id, user_id)}
+      {:error, reason} ->
+        :error
+    end
   end
 
   # Socket IDs are topics that allow you to identify all sockets for a given user:

@@ -30,3 +30,18 @@
   .black-square {
     background-color: #b58863;
   }
+
+  .row-number {
+    display: flex;
+    justify-content: center;
+    float: left;
+    margin: auto;
+  }
+
+  .col-letter {
+    width: 60px;
+    display: flex;
+    justify-content: center;
+    margin: auto;
+    float: left
+  }

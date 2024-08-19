@@ -12,6 +12,7 @@ defmodule ChessWeb.Router do
     plug :put_secure_browser_headers
     plug :fetch_current_user
     plug :print_user_token
+    plug :put_user_token
   end
 
   pipeline :api do

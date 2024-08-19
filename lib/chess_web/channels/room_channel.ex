@@ -50,6 +50,11 @@ defmodule ChessWeb.RoomChannel do
     {:stop, :leave, socket}
   end
 
+  def handle_in("square:click", payload, socket) do
+    IO.inspect(socket)
+    {:noreply, socket}
+  end
+
   def handle_in(event, _payload, socket) do
     IO.inspect("Unhandled event: #{event}")
     {:noreply, socket}
@@ -64,7 +69,20 @@ defmodule ChessWeb.RoomChannel do
   end
 
   def handle_info(:enter_game, socket) do
-    
+    {:noreply, socket}
+  end
+
+  def handle_info(%{event: "square_click", payload: %{square: square, user_id: user_id}}, socket) do
+    if socket.assigns.current_user_id == user_id do
+      push(socket, "square:click", %{square: square})
+      IO.inspect([user_id: user_id, current_user_id: socket.assigns.current_user_id])
+    end
+    {:noreply, socket}
+  end
+
+  def handle_info(_msg, socket) do
+    IO.warn("Unhandled message")
+    {:noreply, socket}
   end
 
   # Add authorization logic here as required.

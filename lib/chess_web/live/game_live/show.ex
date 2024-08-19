@@ -20,8 +20,11 @@ defmodule ChessWeb.GameLive.Show do
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
     game = Games.get_game!(id)
+
     white = if game.white_id, do: Accounts.get_user!(game.white_id).username, else: nil
     black = if game.black_id, do: Accounts.get_user!(game.black_id).username, else: nil
+    color = if socket.assigns.current_user.id == game.white_id, do: :white, else: :black
+
     ready? = Games.ready_game?(game)
 
     if ready? do
@@ -34,7 +37,9 @@ defmodule ChessWeb.GameLive.Show do
      |> assign(:game, game)
      |> assign(:pending, not ready?)
      |> assign(:white_player, white)
-     |> assign(:black_player, black)}
+     |> assign(:black_player, black)
+     |> assign(:current_player, {color, id})
+     |> assign(:arangement, (if socket.assigns.current_user.id == game.white_id, do: {black, white}, else: {white, black}))}
   end
 
   @impl true
@@ -52,6 +57,17 @@ defmodule ChessWeb.GameLive.Show do
     else
       {:noreply, socket}
     end
+  end
+
+  def handle_event("square_click", %{"rank" => rank, "field" => field}, socket) do
+    square = [rank |> String.to_integer, field |> String.to_integer] |> IO.inspect(title: "Square")
+
+    Phoenix.PubSub.broadcast(Chess.PubSub, "room:#{socket.assigns.game.id}", %{
+      event: "square_click",
+      payload: %{square: square, user_id: socket.assigns.current_user.id}
+    })
+
+    {:noreply, socket}
   end
 
   @impl true

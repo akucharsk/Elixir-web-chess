@@ -66,6 +66,17 @@ function joinChannel(channelName, params) {
   return channel
 }
 
+function joinGameChannel(channelName, params) {
+  chan = joinChannel(channelName, params)
+
+  chan.on("square:click", event => {
+    console.log("Square click", event)
+    square_div = document.getElementById(`${event.square[0]}_${event.square[1]}`)
+    square_div.style.backgroundColor = "red"
+  })
+  return chan
+}
+
 // Now that you are connected, you can join channels with a topic.
 // Let's assume you have a channel with a topic named `room` and the
 // subtopic is its id - in this case 42:
@@ -88,7 +99,7 @@ presence.onSync(() => {
 channels.get("room:lobby").on("new_game", payload => {
   // payload = {game_id, pending}
 
-  channels.set(`room:${payload.game_id}`, joinChannel(`room:${payload.game_id}`, {}))
+  channels.set(`room:${payload.game_id}`, joinGameChannel(`room:${payload.game_id}`, {}))
   chan = channels.get(`room:${payload.game_id}`)
   chan.on("enter_game", payload => {
     console.log("Enter game", payload)
