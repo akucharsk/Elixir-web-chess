@@ -15,7 +15,7 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
                 </div>
 
                 <div class="chess-row">
-                <%= for field <- 0..7 do %>
+                <%= for field <- range(@player) do %>
                     <div 
                     class={chess_square_class(rank, field)} 
                     phx-click={"square_click"} 
@@ -30,7 +30,7 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
             <% end %>
             <%= for field <- 0..7 do %>
                 <div class="col-letter">
-                <%= <<?A + field>> %>
+                <%= if @player |> elem(0) == :white, do:  <<?A + field>>, else: <<?H - field>> %>
                 </div>
             <% end %>
             </div>
@@ -51,6 +51,6 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
     end
 
     defp range({atom, _}) do
-        if atom == :white, do: 0..7, else: 7..0
+        if atom == :white, do: 7..0, else: 0..7
     end
 end

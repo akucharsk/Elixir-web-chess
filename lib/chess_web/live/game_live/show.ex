@@ -41,7 +41,7 @@ defmodule ChessWeb.GameLive.Show do
      |> assign(:white_player, white)
      |> assign(:black_player, black)
      |> assign(:current_player, {color, id})
-     |> assign(:arangement, (if color == :white, do: {black, white}, else: {white, black}))
+     |> assign(:arangement, (if color == :white, do: {white, black}, else: {black, white}))
      |> assign(:board, Chessboard.generate_chessboard())
      |> assign(:turn, :white)
      |> assign(:moves, [])

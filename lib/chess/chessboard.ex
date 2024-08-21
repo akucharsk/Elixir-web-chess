@@ -7,8 +7,8 @@ defmodule Chess.Chessboard do
         Generates a chessboard
     """
     def generate_chessboard() do
-        white_pieces = [rook: "WR", knight: "WN", bishop: "WB", queen: "WQ", king: "WK", bishop: "WB", knight: "WN", rook: "WR"]
-        black_pieces = [rook: "BR", knight: "BN", bishop: "BB", queen: "BQ", king: "BK", bishop: "BB", knight: "BN", rook: "BR"]
+        white_pieces = [rook: "WR", knight: "WN", bishop: "WB", queen: "WK", king: "WQ", bishop: "WB", knight: "WN", rook: "WR"]
+        black_pieces = [rook: "BR", knight: "BN", bishop: "BB", queen: "BK", king: "BQ", bishop: "BB", knight: "BN", rook: "BR"]
 
         for col <- 0..7, row <- [0, 1, 6, 7], into: %{} do
             case row do
