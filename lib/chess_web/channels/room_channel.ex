@@ -5,7 +5,7 @@ defmodule ChessWeb.RoomChannel do
 
   @impl true
   def join("room:lobby", %{"name" => name} = payload, socket) do
-    send self, :after_join
+    send self(), :after_join
     socket
     |> assign(:name, name)
     |> authorize_socket(payload)
@@ -16,7 +16,7 @@ defmodule ChessWeb.RoomChannel do
   end
 
   def join("room:" <> game_id, payload, socket) do
-    send self, {:after_join, game_id}
+    send self(), {:after_join, game_id}
     socket
     |> assign(:game_id, game_id)
     |> authorize_socket(payload)
@@ -55,8 +55,13 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
+  def handle_in("piece:move", payload, socket) do
+    send self(), %{event: "piece:move", payload: payload}
+    {:noreply, socket}
+  end
+
   def handle_in(event, _payload, socket) do
-    IO.inspect("Unhandled event: #{event}")
+    IO.warn("Unhandled event: #{event}")
     {:noreply, socket}
   end
 
@@ -65,6 +70,7 @@ defmodule ChessWeb.RoomChannel do
     Presence.track(socket, socket.assigns.game_id, %{
       game_id: game_id,
     })
+    
     {:noreply, socket}
   end
 
@@ -72,16 +78,19 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
-  def handle_info(%{event: "square_click", payload: %{square: square, user_id: user_id}}, socket) do
+  def handle_info(%{event: "square:click", payload: %{moves: moves, user_id: user_id}}, socket) do
+    {:noreply, socket}
+  end
+
+  def handle_info(%{event: "piece:move", payload: %{"from" => from, "to" => to, "user_id" => user_id}}, socket) do
     if socket.assigns.current_user_id == user_id do
-      push(socket, "square:click", %{square: square})
-      IO.inspect([user_id: user_id, current_user_id: socket.assigns.current_user_id])
+      broadcast!(socket, "piece_move", %{from: from, to: to, user_id: user_id})
     end
     {:noreply, socket}
   end
 
-  def handle_info(_msg, socket) do
-    IO.warn("Unhandled message")
+  def handle_info(msg, socket) do
+    IO.warn("Unhandled message #{inspect(msg)}")
     {:noreply, socket}
   end
 

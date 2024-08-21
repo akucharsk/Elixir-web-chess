@@ -31,6 +31,11 @@
     background-color: #b58863;
   }
 
+  .highlight {
+    opacity: 0.5;
+    background-color: red;
+  }
+
   .row-number {
     display: flex;
     justify-content: center;

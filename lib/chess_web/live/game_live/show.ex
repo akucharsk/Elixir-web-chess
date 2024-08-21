@@ -3,6 +3,8 @@ defmodule ChessWeb.GameLive.Show do
 
   alias Chess.Games
   alias Chess.Accounts
+  alias Chess.Chessboard
+
   alias ChessWeb.Endpoint
 
   alias Phoenix.Socket.Broadcast
@@ -39,7 +41,11 @@ defmodule ChessWeb.GameLive.Show do
      |> assign(:white_player, white)
      |> assign(:black_player, black)
      |> assign(:current_player, {color, id})
-     |> assign(:arangement, (if socket.assigns.current_user.id == game.white_id, do: {black, white}, else: {white, black}))}
+     |> assign(:arangement, (if color == :white, do: {black, white}, else: {white, black}))
+     |> assign(:board, Chessboard.generate_chessboard())
+     |> assign(:turn, :white)
+     |> assign(:moves, [])
+     |> assign(:selected_piece_pos, nil)}
   end
 
   @impl true
@@ -60,13 +66,12 @@ defmodule ChessWeb.GameLive.Show do
   end
 
   def handle_event("square_click", %{"rank" => rank, "field" => field}, socket) do
-    square = [rank |> String.to_integer, field |> String.to_integer] |> IO.inspect(title: "Square")
-
-    Phoenix.PubSub.broadcast(Chess.PubSub, "room:#{socket.assigns.game.id}", %{
-      event: "square_click",
-      payload: %{square: square, user_id: socket.assigns.current_user.id}
-    })
-
+    square = {rank |> String.to_integer, field |> String.to_integer}
+    if square in socket.assigns.moves do
+      send self(), {:internal, :move_piece, %{from: socket.assigns.selected_piece_pos |> Tuple.to_list, to: square |> Tuple.to_list, user_id: socket.assigns.current_user.id}}
+    else
+      send self(), {:internal, :square_click, %{square: square, user_id: socket.assigns.current_user.id}}
+    end
     {:noreply, socket}
   end
 
@@ -81,6 +86,51 @@ defmodule ChessWeb.GameLive.Show do
 
   def handle_info(%Broadcast{event: "terminate"}, socket) do
     {:noreply, push_navigate(socket, to: ~p"/games")}
+  end
+
+  def handle_info(%Broadcast{event: "piece_move", payload: %{from: from, to: to, user_id: user_id}}, socket) do
+    IO.inspect({socket.assigns.current_user.username, socket.assigns.turn})
+    {:noreply, 
+    socket
+    |> assign(:board, 
+      Chessboard.move_piece(socket.assigns.board, from |> List.to_tuple, to |> List.to_tuple))
+    |> assign(:turn, (if socket.assigns.turn == :white, do: :black, else: :white))}
+  end
+
+  def handle_info({:internal, :move_piece, %{from: from, to: to, user_id: user_id}}, socket) do
+    turn = socket.assigns.turn
+    if socket.assigns.current_player |> elem(0) == turn do
+      Endpoint.broadcast!("room:#{socket.assigns.game.id}", "piece:move", %{from: from, to: to, user_id: user_id})
+      {:noreply,
+        socket
+        |> assign(:moves, [])
+        |> assign(:selected_piece_pos, nil)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:internal, :square_click, %{square: square, user_id: user_id}}, socket) do
+    turn = socket.assigns.turn
+
+    if socket.assigns.current_player |> elem(0) == turn do
+      moves = case Chessboard.piece_at(socket.assigns.board, square) do
+        {^turn, {_piece, _tag}} -> 
+          Chessboard.possible_moves(socket.assigns.board, square)
+        _ -> []
+      end
+      
+      Endpoint.broadcast!("room:#{socket.assigns.game.id}", "square:click", 
+      %{moves: moves |> Enum.map(&Tuple.to_list/1), user_id: socket.assigns.current_user.id}
+      )
+  
+      {:noreply, 
+        socket
+        |> assign(:moves, moves)
+        |> assign(:selected_piece_pos, square)}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_info(payload, socket) do

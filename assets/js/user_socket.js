@@ -66,13 +66,31 @@ function joinChannel(channelName, params) {
   return channel
 }
 
+highlighted_squares = []
+
+function removeHighlights() {
+  for (let sq of highlighted_squares) {
+    el = document.getElementById(`${sq}`)
+    el.classList.remove("highlight")
+  }
+  highlighted_squares.length = 0
+}
+
 function joinGameChannel(channelName, params) {
   chan = joinChannel(channelName, params)
 
   chan.on("square:click", event => {
-    console.log("Square click", event)
-    square_div = document.getElementById(`${event.square[0]}_${event.square[1]}`)
-    square_div.style.backgroundColor = "red"
+    let moves = event.moves
+    removeHighlights()
+    for (let move of moves) {
+      square = document.getElementById(`${move[0]}_${move[1]}`).classList.add("highlight")
+      highlighted_squares.push(`${move[0]}_${move[1]}`)
+    }
+  })
+
+  chan.on("piece:move", event => {
+    removeHighlights()
+    chan.push("piece:move", event)
   })
   return chan
 }
@@ -82,19 +100,6 @@ function joinGameChannel(channelName, params) {
 // subtopic is its id - in this case 42:
 let channels = new Map()
 channels.set("room:lobby", socket.channel("room:lobby", {name: window.location.search.split("=")[1]}))
-let presence = new Presence(channels.get("room:lobby"))
-
-presence.onSync(() => {
-
-  let response = ""
-
-  presence.list((id, {metas: [first, ...rest]}) => {
-    let count = rest.length + 1
-    response += `<br>${id} (count: ${count})</br>`
-  })
-
-  document.querySelector("main").innerHTML = response
-})
 
 channels.get("room:lobby").on("new_game", payload => {
   // payload = {game_id, pending}
@@ -109,5 +114,17 @@ channels.get("room:lobby").on("new_game", payload => {
 channels.get("room:lobby").join()
   .receive("ok", resp => { console.log("Joined successfully", resp) })
   .receive("error", resp => { console.log("Unable to join", resp) })
+
+path = window.location.pathname.split("/")
+res = parseInt(path[path.length - 1])
+
+if (!isNaN(res) && path.length === 3 && path[0] === "" && path[1] === "games") {
+  channels.set(`room:${res}`, joinGameChannel(`room:${res}`, {}))
+  chan = channels.get(`room:${res}`)
+  chan.on("enter_game", payload => {
+    console.log("Enter game", payload)
+    chan.push("enter_game", payload)
+  })
+}
 
 export default socket
