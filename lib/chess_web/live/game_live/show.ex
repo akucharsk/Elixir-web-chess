@@ -115,8 +115,10 @@ defmodule ChessWeb.GameLive.Show do
 
     if socket.assigns.current_player |> elem(0) == turn do
       moves = case Chessboard.piece_at(socket.assigns.board, square) do
-        {^turn, {_piece, _tag}} -> 
-          Chessboard.possible_moves(socket.assigns.board, square)
+        {^turn, {piece, tag}} -> 
+          socket.assigns.board
+          |> Chessboard.possible_moves(square)
+          |> Chessboard.filter_checks(socket.assigns.board, square, {turn, {piece, tag}})
         _ -> []
       end
       

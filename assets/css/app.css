@@ -50,3 +50,46 @@
     margin: auto;
     float: left
   }
+  
+  .black-bishop, .black-king, .black-knight, .black-pawn, .black-queen, .black-rook,
+  .white-bishop, .white-king, .white-knight, .white-pawn, .white-queen, .white-rook {
+    background-size: cover;
+    background-repeat: no-repeat;
+  }
+
+  .black-bishop {
+    background-image: url("/images/black-bishop.png");
+  }
+  .black-king {
+    background-image: url("/images/black-king.png");
+  }
+  .black-knight {
+    background-image: url("/images/black-knight.png");
+  }
+  .black-pawn {
+    background-image: url("/images/black-pawn.png");
+  }
+  .black-queen {
+    background-image: url("/images/black-queen.png");
+  }
+  .black-rook {
+    background-image: url("/images/black-rook.png");
+  }
+  .white-bishop {
+    background-image: url("/images/white-bishop.png");
+  }
+  .white-king {
+    background-image: url("/images/white-king.png");
+  }
+  .white-knight {
+    background-image: url("/images/white-knight.png");
+  }
+  .white-pawn {
+    background-image: url("/images/white-pawn.png");
+  }
+  .white-queen {
+    background-image: url("/images/white-queen.png");
+  }
+  .white-rook {
+    background-image: url("/images/white-rook.png");
+  }

@@ -17,13 +17,12 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
                 <div class="chess-row">
                 <%= for field <- range(@player) do %>
                     <div 
-                    class={chess_square_class(rank, field)} 
+                    class={chess_square_class(@board, rank, field)} 
                     phx-click={"square_click"} 
                     phx-value-rank={rank} 
                     phx-value-field={field}
                     id={"#{rank}_#{field}"}
                     >
-                        <%= Chessboard.piece_repr_at(@board, {rank, field}) %>
                     </div>
                 <% end %>
                 </div>
@@ -46,8 +45,12 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
         |> assign(assigns)}
     end
     
-    defp chess_square_class(row, col) do
-        if rem(row + col, 2) == 0, do: "white-square", else: "black-square"
+    defp chess_square_class(board, row, col) do
+        cls = if rem(row + col, 2) == 0, do: "white-square", else: "black-square"
+        case Chessboard.piece_at(board, {row, col}) do
+            nil -> cls
+            {_, {_, tag}} -> "#{cls} #{tag}"
+        end
     end
 
     defp range({atom, _}) do
