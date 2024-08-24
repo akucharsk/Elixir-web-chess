@@ -1,5 +1,5 @@
 
-<.header>
+<%!-- <.header>
   Game <%= @game.id %>
   <:subtitle>This is a game record from your database.</:subtitle>
   <:actions>
@@ -7,9 +7,9 @@
       <.button>Edit game</.button>
     </.link>
   </:actions>
-</.header>
+</.header> --%>
 
-<.list>
+<%!-- <.list>
   <:item title="Result"><%= @game.result %></:item>
   <:item title="Score"><%= @game.score %></:item>
   <:item title="Pen"><%= @game.pen %></:item>
@@ -18,7 +18,7 @@
   <:item title="Black"><%= @black_player %></:item>
 </.list>
 
-<.back navigate={~p"/games"}>Back to games</.back>
+<.back navigate={~p"/games"}>Back to games</.back> --%>
 
 <%!-- <.modal :if={@live_action == :edit} id="game-modal" show on_cancel={JS.patch(~p"/games/#{@game}")}>
   <.live_component

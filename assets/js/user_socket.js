@@ -127,4 +127,6 @@ if (!isNaN(res) && path.length === 3 && path[0] === "" && path[1] === "games") {
   })
 }
 
+window.addEventListener("click", _event => {removeHighlights()})
+
 export default socket

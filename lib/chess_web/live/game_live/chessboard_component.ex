@@ -7,7 +7,7 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
     def render(assigns) do
         ~H"""
         <div>
-            <div> <%= @arangement |> elem(0) %> </div>
+            <div> <%= @arangement |> elem(1) %> </div>
             <div id="chessboard" class="chessboard">
             <%= for rank <- range(@player) do %>
                 <div class="row-number">
@@ -33,7 +33,7 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
                 </div>
             <% end %>
             </div>
-            <div> <%= @arangement |> elem(1) %> </div>
+            <div> <%= @arangement |> elem(0) %> </div>
         </div>
         """
       end

@@ -14,8 +14,8 @@
   }
   
   .white-square, .black-square {
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -44,7 +44,7 @@
   }
 
   .col-letter {
-    width: 60px;
+    width: 80px;
     display: flex;
     justify-content: center;
     margin: auto;
