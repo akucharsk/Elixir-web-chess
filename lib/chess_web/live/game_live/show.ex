@@ -47,7 +47,8 @@ defmodule ChessWeb.GameLive.Show do
      |> assign(:moves, [])
      |> assign(:selected_piece, nil)
      |> assign(:selected_piece_pos, nil)
-     |> assign(:last_move, nil)}
+     |> assign(:last_move, nil)
+     |> assign(:castling_privileges, %{white: %{long: true, short: true}, black: %{long: true, short: true}})}
   end
 
   @impl true
@@ -70,7 +71,7 @@ defmodule ChessWeb.GameLive.Show do
   def handle_event("square_click", %{"rank" => rank, "field" => field}, socket) do
     square = {rank |> String.to_integer, field |> String.to_integer}
     if destination = Enum.find(socket.assigns.moves, fn {row, col, _spec} -> {row, col} == square end) do
-      send self(), {:internal, :move_piece, %{from: socket.assigns.selected_piece_pos |> Tuple.to_list, to: destination |> Tuple.to_list, user_id: socket.assigns.current_user.id}}
+      send self(), {:internal, :move_piece, %{from: socket.assigns.selected_piece_pos, to: destination, user_id: socket.assigns.current_user.id}}
     else
       send self(), {:internal, :square_click, %{square: square, user_id: socket.assigns.current_user.id}}
     end
@@ -108,12 +109,20 @@ defmodule ChessWeb.GameLive.Show do
   def handle_info({:internal, :move_piece, %{from: from, to: to, user_id: user_id}}, socket) do
     turn = socket.assigns.turn
     if socket.assigns.current_player |> elem(0) == turn do
-      Endpoint.broadcast!("room:#{socket.assigns.game.id}", "piece:move", %{from: from, to: to, user_id: user_id})
+
+      Endpoint.broadcast!("room:#{socket.assigns.game.id}", "piece:move", 
+      %{from: from |> Tuple.to_list, to: to |> Tuple.to_list, user_id: user_id})
+
+      castling_privileges = 
+      socket.assigns.castling_privileges
+      |> Chessboard.update_castling_privileges(from, Chessboard.piece_at(socket.assigns.board, from))
+
       {:noreply,
         socket
         |> assign(:moves, [])
         |> assign(:selected_piece_pos, nil)
-        |> assign(:selected_piece, nil)}
+        |> assign(:selected_piece, nil)
+        |> assign(:castling_privileges, castling_privileges)}
     else
       {:noreply, socket}
     end
@@ -126,14 +135,15 @@ defmodule ChessWeb.GameLive.Show do
         {^turn, {piece, tag}} -> 
           socket.assigns.board
           |> Chessboard.possible_moves(square)
-          |> Chessboard.append_en_passant(socket.assigns.board, square, {turn, {piece, tag}}, socket.assigns.last_move)
+          |> Chessboard.append_en_passant(square, {turn, {piece, tag}}, socket.assigns.last_move)
+          |> Chessboard.append_castling(socket.assigns.board, socket.assigns.castling_privileges[turn], {turn, {piece, tag}})
           |> Chessboard.filter_checks(socket.assigns.board, square, {turn, {piece, tag}})
         _ -> []
       end
-      
-      Endpoint.broadcast!("room:#{socket.assigns.game.id}", "square:click", 
-      %{moves: moves |> Enum.map(&Tuple.to_list/1), user_id: socket.assigns.current_user.id}
-      )
+
+      Phoenix.PubSub.broadcast!(Chess.PubSub,
+        "room:#{socket.assigns.game.id}",
+        %{event: "square:click", payload: %{moves: moves |> Enum.map(&Tuple.to_list/1), user_id: socket.assigns.current_user.id}})
   
       {:noreply, 
         socket

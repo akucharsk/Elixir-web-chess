@@ -15,7 +15,7 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
                 </div>
 
                 <div class="chess-row">
-                <%= for field <- range(@player) do %>
+                <%= for field <- range(@player) |> Enum.reverse do %>
                     <div 
                     class={chess_square_class(@board, rank, field)} 
                     phx-click={"square_click"} 
@@ -46,7 +46,7 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
     end
     
     defp chess_square_class(board, row, col) do
-        cls = if rem(row + col, 2) == 0, do: "white-square", else: "black-square"
+        cls = if rem(row + col, 2) == 1, do: "white-square", else: "black-square"
         case Chessboard.piece_at(board, {row, col}) do
             nil -> cls
             {_, {_, tag}} -> "#{cls} #{tag}"

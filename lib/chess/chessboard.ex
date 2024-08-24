@@ -3,12 +3,15 @@ defmodule Chess.Chessboard do
     The Chessboard.
     """
 
+    defp opposite_color(:white), do: :black
+    defp opposite_color(:black), do: :white
+
     @doc """
         Generates a chessboard
     """
     def generate_chessboard() do
-        white_pieces = [rook: "white-rook", knight: "white-knight", bishop: "white-bishop", king: "white-king",
-         queen: "white-queen", bishop: "white-bishop", knight: "white-knight", rook: "white-rook"]
+        white_pieces = [rook: "white-rook", knight: "white-knight", bishop: "white-bishop",
+         queen: "white-queen", king: "white-king", bishop: "white-bishop", knight: "white-knight", rook: "white-rook"]
         black_pieces = Enum.map(white_pieces, fn {piece, code} -> {piece, String.replace(code, "white", "black")} end)
 
         for col <- 0..7, row <- [0, 1, 6, 7], into: %{} do
@@ -51,20 +54,6 @@ defmodule Chess.Chessboard do
     end
 
     # PAWNS
-    def possible_moves(board, {1, col}, {:white, {:pawn, _}} = piece) do
-        case piece_at(board, {2, col}) do
-            nil -> [{2, col, nil}] ++ possible_moves(board, {2, col}, piece) -- pawn_takes(board, {2, col}, piece)
-            _ -> []
-        end
-    end
-
-    def possible_moves(board, {6, col}, {:black, {:pawn, _}} = piece) do
-        case piece_at(board, {5, col}) do
-            nil -> [{5, col, nil}] ++ possible_moves(board, {5, col}, piece) -- pawn_takes(board, {5, col}, piece)
-            _ -> []
-        end
-    end
-
     def possible_moves(board, {row, col}, {color, {:pawn, _}} = piece) do
         next_row = if color == :white, do: row + 1, else: row - 1
         case piece_at(board, {next_row, col}) do
@@ -72,7 +61,24 @@ defmodule Chess.Chessboard do
             _ -> []
         end
         ++ pawn_takes(board, {row, col}, piece)
+        ++ extra_square(board, {row, col}, color)
     end
+
+    defp extra_square(board, {1, col}, :white) do
+        case piece_at(board, {3, col}) do
+            nil -> [{3, col, nil}]
+            _ -> []
+        end
+    end
+
+    defp extra_square(board, {6, col}, :black) do
+        case piece_at(board, {4, col}) do
+            nil -> [{4, col, nil}]
+            _ -> []
+        end
+    end
+    
+    defp extra_square(_board, _pos, _color), do: []
 
     defp pawn_takes(board, {row, col}, {color, {:pawn, _}}) do
         row = if color == :white, do: row + 1, else: row - 1
@@ -152,9 +158,20 @@ defmodule Chess.Chessboard do
             "en_passant" ->
                 board
                 |> Map.delete({from_row, to_col})
-                |> move_piece({from_row, from_col}, {to_row, to_col})
-            _ -> move_piece(board, {from_row, from_col}, {to_row, to_col})
+
+            "long_castling" ->
+                board
+                |> Map.put({to_row, 3}, piece_at(board, {to_row, 0}))
+                |> Map.delete({from_row, 0})
+
+            "short_castling" ->
+                board
+                |> Map.put({to_row, 5}, piece_at(board, {to_row, 7}))
+                |> Map.delete({from_row, 7})
+
+            _ -> board
         end
+        |> move_piece({from_row, from_col}, {to_row, to_col})
     end
 
     # for debugging purposes
@@ -198,6 +215,16 @@ defmodule Chess.Chessboard do
     end
 
     @doc """
+        Checks if a given position is attacked by a piece of a given color.
+    """
+    def is_attacked?(board, {row, col}, color) do
+        board
+        |> Enum.filter(fn {{_, _}, {^color, _}} -> true; _ -> false end)
+        |> Enum.flat_map(fn {{r, c}, _} -> possible_moves(board, {r, c}) end)
+        |> Enum.any?(fn {r, c, _spec} -> {r, c} == {row, col} end)
+    end
+
+    @doc """
         Scans if there are any checks on the board, returns :white if the white king is checked,
         :black if the black king is checked, nil if there are no checks, and {:error, message} when both kings are checked.
         Such a situation should never happen.
@@ -205,53 +232,108 @@ defmodule Chess.Chessboard do
 
     def scan_checks(board, :white) do
         white_king_pos = Enum.find(board, fn {{_, _}, {:white, {:king, _}}} -> true; _ -> false end) |> elem(0)
-        black_pieces = 
-        board
-        |> Enum.filter(fn {{_, _}, {:black, _}} -> true; _ -> false end)
-        |> Enum.map(fn {{row, col}, _} -> {row, col} end)
-        |> Enum.flat_map(fn pos -> possible_moves(board, pos) end)
-
-        Enum.any?(black_pieces, fn {row, col, _act} -> {row, col} == white_king_pos end)
+        
+        is_attacked?(board, white_king_pos, :black)
     end
 
     def scan_checks(board, :black) do
         black_king_pos = Enum.find(board, fn {{_, _}, {:black, {:king, _}}} -> true; _ -> false end) |> elem(0)
-        white_pieces =
-        board
-        |> Enum.filter(fn {{_, _}, {:white, _}} -> true; _ -> false end)
-        |> Enum.map(fn {{row, col}, _} -> {row, col} end)
-        |> Enum.flat_map(fn pos -> possible_moves(board, pos) end)
-
-        Enum.any?(white_pieces, fn {row, col, _act} -> {row, col} == black_king_pos end)
+        
+        is_attacked?(board, black_king_pos, :white)
     end
 
     @doc """
-        Filters out all moves that would result in a check.
+        Filters out all moves that would result in a check for the player moving the piece.
     """
     def filter_checks(moves, board, {row, col}, {color, {_piece, _tag}}) do
         moves
-        |> Enum.filter(fn {r, c, _act} ->
+        |> Enum.filter(fn {r, c, _spec} ->
             board
             |> move_piece({row, col}, {r, c})
             |> scan_checks(color) == false
         end)
     end
 
-    defp check_en_passant(_board, {4, _col}, {:white, {:pawn, _}}, {:black, :pawn, {6, last_col, _spec_from}, {4, last_col, _spec_to}}) do
+    defp check_en_passant({4, _col}, {:white, {:pawn, _}}, {:black, :pawn, {6, last_col, _spec_from}, {4, last_col, _spec_to}}) do
         [{5, last_col, :en_passant}]
     end
 
-    defp check_en_passant(_board, {3, _col}, {:black, {:pawn, _}}, {:white, :pawn, {1, last_col, _spec_from}, {3, last_col, _spec_to}}) do
+    defp check_en_passant({3, _col}, {:black, {:pawn, _}}, {:white, :pawn, {1, last_col, _spec_from}, {3, last_col, _spec_to}}) do
         [{2, last_col, :en_passant}]
     end
 
-    defp check_en_passant(_board, _pos, _piece, _last_move), do: []
+    defp check_en_passant(_pos, _piece, _last_move), do: []
 
     @doc """
         Checks en passant, and appends it to the current possible moves of a given piece
     """
-    def append_en_passant(moves, board, {_row, _col} = pos, 
-        {_color, {_piece, _}} = piece, last_move) do
-            moves ++ check_en_passant(board, pos, piece, last_move)
+    def append_en_passant(moves, {_row, _col} = pos, {_color, {_piece, _}} = piece, last_move) do
+        moves ++ check_en_passant(pos, piece, last_move)
+    end
+
+    def append_castling(moves, board, %{long: long_privilege?, short: short_privilege?}, {color, {:king, _}}) do
+        moves
+        ++
+        case long_privilege? do
+            true -> check_long_castling(board, color)
+            false -> []
         end
+        ++
+        case short_privilege? do
+            true -> check_short_castling(board, color)
+            false -> []
+        end
+    end
+
+    def append_castling(moves, _board, _privileges, _piece), do: moves
+
+    defp check_long_castling(board, color) do
+        row = if color == :white, do: 0, else: 7
+        king_pos = {row, 4}
+        rook_pos = {row, 0}
+
+        opposite = opposite_color(color)
+
+        if is_attacked?(board, king_pos, opposite) or
+            is_attacked?(board, rook_pos, opposite) or
+            Enum.any?(1..3, fn i -> not is_nil(piece_at(board, {row, i})) or is_attacked?(board, {row, i}, opposite) end) do
+                []
+            else
+                [{row, 2, :long_castling}]
+            end
+    end
+
+    defp check_short_castling(board, color) do
+        row = if color == :white, do: 0, else: 7
+        king_pos = {row, 4}
+        rook_pos = {row, 7}
+
+        opposite = opposite_color(color)
+
+        if is_attacked?(board, king_pos, opposite) or
+            is_attacked?(board, rook_pos, opposite) or
+            Enum.any?(5..6, fn i -> not is_nil(piece_at(board, {row, i})) or is_attacked?(board, {row, i}, opposite) end) do
+                []
+            else
+                [{row, 6, :short_castling}]
+            end
+    end
+
+    @doc """
+        Returns the castling privileges for a given color after a move.
+        Syntax:
+        update_castling_privileges(current_privileges, {from_row, from_col}, {color, {piece, _tag}})
+    """
+    def update_castling_privileges(privileges, {from_row, from_col, _spec}, {_color, {_piece, _tag}} = piece) do
+        update_castling_privileges(privileges, {from_row, from_col}, piece)
+    end
+
+    def update_castling_privileges(privileges, {0, 0}, {:white, {:rook, _}}), do: %{privileges | white: %{privileges.white | long: false}}
+    def update_castling_privileges(privileges, {0, 7}, {:white, {:rook, _}}), do: %{privileges | white: %{privileges.white | short: false}}
+    def update_castling_privileges(privileges, {0, 4}, {:white, {:king, _}}), do: %{privileges | white: %{long: false, short: false}}
+    def update_castling_privileges(privileges, {7, 0}, {:black, {:rook, _}}), do: %{privileges | black: %{privileges.black | long: false}}
+    def update_castling_privileges(privileges, {7, 7}, {:black, {:rook, _}}), do: %{privileges | black: %{privileges.black | short: false}}
+    def update_castling_privileges(privileges, {7, 4}, {:black, {:king, _}}), do: %{privileges | black: %{long: false, short: false}}
+    
+    def update_castling_privileges(privileges, _pos, _piece), do: privileges
 end
