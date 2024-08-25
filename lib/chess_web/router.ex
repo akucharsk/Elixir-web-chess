@@ -45,6 +45,8 @@ defmodule ChessWeb.Router do
     live "/games/new", GameLive.Index, :new
     live "/games/:id/edit", GameLive.Index, :edit
 
+    live "/games/sandbox", GameSandboxLive.Index, :index
+
     live "/games/:id", GameLive.Show, :show
     live "/games/:id/show/edit", GameLive.Show, :edit
 

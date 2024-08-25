@@ -116,7 +116,7 @@ defmodule Chess.FENParser do
     defp register_castling_rights({:ok, game_data}, "-") do
         {:ok,
             game_data
-            |> Map.put(:castling_rights, %{white: %{long: false, short: false}, black: %{long: false, short: false}})
+            |> Map.put(:castling_privileges, %{white: %{long: false, short: false}, black: %{long: false, short: false}})
         }
     end
     defp register_castling_rights({:ok, game_data}, castling_rights) do
@@ -132,7 +132,7 @@ defmodule Chess.FENParser do
                 _, {:error, reason} -> {:error, reason} 
             end)
         |> case do
-            {:ok, map} -> {:ok, Map.put(game_data, :castling_rights, map)}
+            {:ok, map} -> {:ok, Map.put(game_data, :castling_privileges, map)}
             {:error, reason} -> {:error, reason}
         end
     end
@@ -142,7 +142,7 @@ defmodule Chess.FENParser do
     defp get_field(square), do: (square |> String.downcase |> String.to_charlist |> List.first) - ?a
 
     defp register_en_passant({:ok, game_data}, "-"), do: {:ok, Map.put(game_data, :en_passant, nil)}
-    defp register_en_passant({:ok, %{board: board, turn: :white, castling_rights: _rights}} = game_data, en_passant) do
+    defp register_en_passant({:ok, %{board: board, turn: :white, castling_privileges: _rights}} = game_data, en_passant) do
         if Regex.match?(~r/[A-Ha-h]6/, en_passant) do
             field = get_field(en_passant)
 
@@ -155,7 +155,7 @@ defmodule Chess.FENParser do
             {:error, "Invalid FEN code: Impossible to execute en-passant on square #{en_passant}"}
         end
     end
-    defp register_en_passant({:ok, %{board: board, turn: :black, castling_rights: _rights}} = game_data, en_passant) do
+    defp register_en_passant({:ok, %{board: board, turn: :black, castling_privileges: _rights}} = game_data, en_passant) do
         if Regex.match?(~r/[A-Ha-h]3/, en_passant) do
             field = get_field(en_passant)
 
@@ -174,7 +174,7 @@ defmodule Chess.FENParser do
     # Halfmove clock registration
     defp register_halfmove_clock({:ok, game_data}, halfmoves) do
         case Regex.match?(~r/^\d+$/, halfmoves) do
-            true -> {:ok, game_data |> Map.put(:halfmoves, min(String.to_integer(halfmoves), 100))}
+            true -> {:ok, game_data |> Map.put(:halfmove_clock, min(String.to_integer(halfmoves), 100))}
             false ->{:error, "Invalid FEN code: Invalid halfmove clock input (#{halfmoves})"}
         end
     end
@@ -192,7 +192,7 @@ defmodule Chess.FENParser do
     @doc """
         Generates a FEN string from a chessboard.
     """
-    def fen_from_game!(%{board: board, turn: turn, castling_rights: castling_rights, en_passant: en_passant, halfmoves: halfmoves, fullmoves: fullmoves}) do
+    def fen_from_game!(%{board: board, turn: turn, castling_privileges: castling_rights, en_passant: en_passant, halfmove_clock: halfmoves, fullmoves: fullmoves}) do
         board
         |> expand_board
         |> Enum.reduce([], &fen_from_rank/2)

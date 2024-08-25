@@ -1,4 +1,4 @@
-defmodule ChessWeb.GameLive.ChessboardComponent do
+defmodule ChessWeb.ChessboardComponent do
     use ChessWeb, :live_component
 
     alias Chess.Chessboard

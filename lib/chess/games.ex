@@ -117,7 +117,7 @@ defmodule Chess.Games do
     case Repo.one(query) do
       nil -> 
         atom = if Enum.random([0, 1]) == 0, do: :white_id, else: :black_id
-        create_game(%{atom => user_id})
+        create_game(%{atom => user_id, fen: Chess.FENParser.base_fen})
       game -> fill_free_spot(game, user_id)
     end
   end

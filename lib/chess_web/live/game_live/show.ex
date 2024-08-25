@@ -4,6 +4,7 @@ defmodule ChessWeb.GameLive.Show do
   alias Chess.Games
   alias Chess.Accounts
   alias Chess.Chessboard
+  alias Chess.FENParser
 
   alias ChessWeb.Endpoint
 
@@ -33,6 +34,13 @@ defmodule ChessWeb.GameLive.Show do
       Endpoint.broadcast_from!(self, "room:#{id}", "enter_game", %{white_username: white, black_username: black})
     end
 
+    %{board: board,
+      turn: turn,
+      castling_privileges: castling_privileges,
+      en_passant: en_passant,
+      halfmove_clock: halfmove_clock,
+      fullmoves: fullmoves} = FENParser.game_from_fen!(game.fen)
+
     {:noreply,
      socket
      |> assign(:page_title, page_title(socket.assigns.live_action))
@@ -42,13 +50,8 @@ defmodule ChessWeb.GameLive.Show do
      |> assign(:black_player, black)
      |> assign(:current_player, {color, id})
      |> assign(:arangement, (if color == :white, do: {white, black}, else: {black, white}))
-     |> assign(:board, Chessboard.generate_chessboard())
-     |> assign(:turn, :white)
-     |> assign(:moves, [])
-     |> assign(:selected_piece, nil)
-     |> assign(:selected_piece_pos, nil)
-     |> assign(:last_move, nil)
-     |> assign(:castling_privileges, %{white: %{long: true, short: true}, black: %{long: true, short: true}})}
+     |> assign(board: board, turn: turn, moves: [], selected_piece: nil, selected_piece_pos: nil, last_move: nil)
+     |> assign(castling_privileges: castling_privileges, en_passant: en_passant, halfmove_clock: halfmove_clock, fullmoves: fullmoves)}
   end
 
   @impl true
@@ -96,12 +99,21 @@ defmodule ChessWeb.GameLive.Show do
     from = from ++ [nil] |> List.to_tuple
     to = to |> List.to_tuple
     last_move = {socket.assigns.turn, Chessboard.piece_at(socket.assigns.board, from) |> elem(1) |> elem(0), from, to}
-    {:noreply, 
+
+    socket =
     socket
+    |> assign(:fullmoves, (if socket.assigns.turn == :black, do: socket.assigns.fullmoves + 1, else: socket.assigns.fullmoves))
+    |> assign(:halfmove_clock, (if last_move |> elem(1) == :pawn or Chessboard.piece_at(socket.assigns.board, to) != nil, do: 0, else: socket.assigns.halfmove_clock + 1))
     |> assign(:board, 
       Chessboard.move_piece(socket.assigns.board, from, to))
     |> assign(:last_move, last_move)
-    |> assign(:turn, (if socket.assigns.turn == :white, do: :black, else: :white))}
+    |> assign(:turn, (if socket.assigns.turn == :white, do: :black, else: :white))
+
+    if user_id == socket.assigns.current_user.id do
+      spawn(fn -> handle_info({:internal, :register_move}, socket) end)
+    end
+
+    {:noreply, socket}
   end
 
   # Handle internal events
@@ -152,6 +164,22 @@ defmodule ChessWeb.GameLive.Show do
     else
       {:noreply, socket}
     end
+  end
+
+  def handle_info({:internal, :register_move}, socket) do
+    assigns = socket.assigns
+    game = socket.assigns.game
+    Games.update_game(game, 
+    %{
+      fen: FENParser.fen_from_game!(
+        %{board: assigns.board, 
+          turn: assigns.turn, 
+          castling_privileges: assigns.castling_privileges, 
+          en_passant: assigns.en_passant, 
+          halfmove_clock: assigns.halfmove_clock, 
+          fullmoves: assigns.fullmoves})
+    })
+    {:noreply, socket}
   end
 
   def handle_info(payload, socket) do
