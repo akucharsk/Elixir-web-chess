@@ -3,6 +3,8 @@ defmodule Chess.Chessboard do
     The Chessboard.
     """
 
+    alias Chess.FENParser
+
     defp opposite_color(:white), do: :black
     defp opposite_color(:black), do: :white
 
@@ -10,18 +12,9 @@ defmodule Chess.Chessboard do
         Generates a chessboard
     """
     def generate_chessboard() do
-        white_pieces = [rook: "white-rook", knight: "white-knight", bishop: "white-bishop",
-         queen: "white-queen", king: "white-king", bishop: "white-bishop", knight: "white-knight", rook: "white-rook"]
-        black_pieces = Enum.map(white_pieces, fn {piece, code} -> {piece, String.replace(code, "white", "black")} end)
-
-        for col <- 0..7, row <- [0, 1, 6, 7], into: %{} do
-            case row do
-                0 -> {{row, col}, {:white, Enum.at(white_pieces, col)}}
-                1 -> {{row, col}, {:white, {:pawn, "white-pawn"}}}
-                6 -> {{row, col}, {:black, {:pawn, "black-pawn"}}}
-                7 -> {{row, col}, {:black, Enum.at(black_pieces, col)}}
-            end
-        end
+        FENParser.base_fen
+        |> FENParser.game_from_fen!
+        |> Map.get(:board)
     end
 
     @doc """
@@ -57,11 +50,10 @@ defmodule Chess.Chessboard do
     def possible_moves(board, {row, col}, {color, {:pawn, _}} = piece) do
         next_row = if color == :white, do: row + 1, else: row - 1
         case piece_at(board, {next_row, col}) do
-            nil -> [{next_row, col, nil}]
+            nil -> [{next_row, col, nil}] ++ extra_square(board, {row, col}, color)
             _ -> []
         end
         ++ pawn_takes(board, {row, col}, piece)
-        ++ extra_square(board, {row, col}, color)
     end
 
     defp extra_square(board, {1, col}, :white) do
@@ -70,14 +62,12 @@ defmodule Chess.Chessboard do
             _ -> []
         end
     end
-
     defp extra_square(board, {6, col}, :black) do
         case piece_at(board, {4, col}) do
             nil -> [{4, col, nil}]
             _ -> []
         end
     end
-    
     defp extra_square(_board, _pos, _color), do: []
 
     defp pawn_takes(board, {row, col}, {color, {:pawn, _}}) do

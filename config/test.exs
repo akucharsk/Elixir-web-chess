@@ -9,8 +9,8 @@ config :bcrypt_elixir, :log_rounds, 1
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
 config :chess, Chess.Repo,
-  username: "postgres",
-  password: "postgres",
+  username: "POSTGRES_USER" |> System.get_env,
+  password: "POSTGRES_PASSWORD" |> System.get_env,
   hostname: "localhost",
   database: "chess_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
@@ -20,7 +20,7 @@ config :chess, Chess.Repo,
 # you can enable the server option below.
 config :chess, ChessWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "NG3p3KVSVAfWlrm/MhPKIyqGIh0YG74bf0b2KEABVQSJbMhI132M57EpVVknlZWC",
+  secret_key_base: "CHESS_SECRET_KEY" |> System.get_env,
   server: false
 
 # In test we don't send emails.

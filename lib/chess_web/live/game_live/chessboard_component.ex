@@ -1,9 +1,9 @@
 defmodule ChessWeb.GameLive.ChessboardComponent do
     use ChessWeb, :live_component
 
-    alias Chess.Games
     alias Chess.Chessboard
 
+    @impl true
     def render(assigns) do
         ~H"""
         <div>
@@ -39,7 +39,7 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
       end
 
     @impl true
-    def update(%{game: game} = assigns, socket) do
+    def update(%{game: _game} = assigns, socket) do
         {:ok,
         socket
         |> assign(assigns)}
@@ -53,7 +53,6 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
         end
     end
 
-    defp range({atom, _}) do
-        if atom == :white, do: 7..0, else: 0..7
-    end
+    defp range({:white, _}), do: 7..0
+    defp range({:black, _}), do: 0..7
 end

@@ -136,4 +136,5 @@ defmodule Chess.Games do
   def ready_game?(%Game{white_id: nil} = game), do: false
   def ready_game?(%Game{black_id: nil} = game), do: false
   def ready_game?(_game), do: true
+
 end
