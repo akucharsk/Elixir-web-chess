@@ -51,7 +51,7 @@ defmodule ChessWeb.GameLive.Show do
      |> assign(:current_player, {color, id})
      |> assign(:arangement, (if color == :white, do: {white, black}, else: {black, white}))
      |> assign(board: board, turn: turn, moves: [], selected_piece: nil, selected_piece_pos: nil, last_move: nil)
-     |> assign(castling_privileges: castling_privileges, en_passant: en_passant, halfmove_clock: halfmove_clock, fullmoves: fullmoves)}
+     |> assign(castling_privileges: castling_privileges, fen_en_passant: en_passant, halfmove_clock: halfmove_clock, fullmoves: fullmoves)}
   end
 
   @impl true
@@ -169,16 +169,26 @@ defmodule ChessWeb.GameLive.Show do
   def handle_info({:internal, :register_move}, socket) do
     assigns = socket.assigns
     game = socket.assigns.game
+
+    {:ok, _} =
     Games.update_game(game, 
     %{
       fen: FENParser.fen_from_game!(
         %{board: assigns.board, 
           turn: assigns.turn, 
           castling_privileges: assigns.castling_privileges, 
-          en_passant: assigns.en_passant, 
+          en_passant: assigns.fen_en_passant, 
           halfmove_clock: assigns.halfmove_clock, 
           fullmoves: assigns.fullmoves})
     })
+    
+    case Games.register_move(assigns.board, assigns.last_move, assigns.fullmoves, game.id) do
+      {:ok, _} -> {:noreply, socket}
+      {:error, changeset} -> 
+        IO.inspect(changeset)
+        {:noreply, socket}
+    end
+
     {:noreply, socket}
   end
 

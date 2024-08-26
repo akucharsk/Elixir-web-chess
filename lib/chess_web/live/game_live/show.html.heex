@@ -1,4 +1,14 @@
+<%= if flash_info = @flash[:info] do %>
+  <div class="alert alert-info">
+    <%= flash_info %>
+  </div>
+<% end %>
 
+<%= if flash_error = @flash[:error] do %>
+  <div class="alert alert-danger">
+    <%= flash_error %>
+  </div>
+<% end %>
 <%!-- <.header>
   Game <%= @game.id %>
   <:subtitle>This is a game record from your database.</:subtitle>

@@ -20,4 +20,36 @@ defmodule Chess.GamesFixtures do
 
     game
   end
+
+  @doc """
+  Generate a pen.
+  """
+  def pen_fixture(attrs \\ %{}) do
+    {:ok, pen} =
+      attrs
+      |> Enum.into(%{
+        black_move: "some black_move",
+        move: 42,
+        white_move: "some white_move"
+      })
+      |> Chess.Games.create_pen()
+
+    pen
+  end
+
+  @doc """
+  Generate a move.
+  """
+  def move_fixture(attrs \\ %{}) do
+    {:ok, move} =
+      attrs
+      |> Enum.into(%{
+        black_move: "some black_move",
+        move: 42,
+        white_move: "some white_move"
+      })
+      |> Chess.Games.create_move()
+
+    move
+  end
 end

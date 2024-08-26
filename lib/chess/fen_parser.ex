@@ -9,13 +9,13 @@ defmodule Chess.FENParser do
                     "B" => {:white, {:bishop, "white-bishop"}},
                     "N" => {:white, {:knight, "white-knight"}},
                     "P" => {:white, {:pawn, "white-pawn"}}}
-    @white_pieces_reverse for {key, piece} <- @white_pieces, into: %{}, do: {piece, key}
+    @white_pieces_reverse for {key, {color, {piece, _}}} <- @white_pieces, into: %{}, do: {{color, piece}, key}
     
     @black_pieces Map.new(@white_pieces, 
                     fn {key, {_, {piece, "white-" <> name}}} -> {String.downcase(key), {:black, {piece, "black-" <> name}}} end)
-    @black_pieces_reverse for {key, piece} <- @black_pieces, into: %{}, do: {piece, key}
+    @black_pieces_reverse for {key, {color, {piece, _}}} <- @black_pieces, into: %{}, do: {{color, piece}, key}
 
-    @base_fen "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 0"
+    @base_fen "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
     def white_pieces(), do: @white_pieces
     def black_pieces(), do: @black_pieces
@@ -215,8 +215,8 @@ defmodule Chess.FENParser do
         |> Enum.reduce({[], 0},
             fn
                 {_, nil}, {inner_acc, val} -> {inner_acc, val + 1}
-                {_, {color, _} = piece}, {inner_acc, 0} -> {[reverse_pieces(color)[piece] | inner_acc], 0}
-                {_, {color, _} = piece}, {inner_acc, val} -> {["#{val}#{reverse_pieces(color)[piece]}" | inner_acc], 0}
+                {_, {color, {piece, _}}}, {inner_acc, 0} -> {[reverse_pieces(color)[{color, piece}] | inner_acc], 0}
+                {_, {color, {piece, _}}}, {inner_acc, val} -> {["#{val}#{reverse_pieces(color)[{color, piece}]}" | inner_acc], 0}
             end)
         |> case do
                 {[], 8} -> ["8"]

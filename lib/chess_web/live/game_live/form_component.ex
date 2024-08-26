@@ -21,7 +21,6 @@ defmodule ChessWeb.GameLive.FormComponent do
       >
         <.input field={@form[:result]} type="number" label="Result" />
         <.input field={@form[:score]} type="number" label="Score" />
-        <.input field={@form[:pen]} type="text" label="Pen" />
         <.input field={@form[:fen]} type="text" label="Fen" />
         <:actions>
           <.button phx-disable-with="Saving...">Save Game</.button>

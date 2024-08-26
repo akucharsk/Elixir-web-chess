@@ -6,12 +6,13 @@ defmodule Chess.Games.Game do
 
   schema "games" do
     field :fen, :string
-    field :pen, :string
     field :result, :integer
     field :score, :integer
     
     belongs_to :white, User, foreign_key: :white_id
     belongs_to :black, User, foreign_key: :black_id
+
+    has_many :moves, Chess.Games.Move
 
     timestamps(type: :utc_datetime)
   end
@@ -19,6 +20,6 @@ defmodule Chess.Games.Game do
   @doc false
   def changeset(game, attrs) do
     game
-    |> cast(attrs, [:white_id, :black_id, :result, :score, :pen, :fen])
+    |> cast(attrs, [:white_id, :black_id, :result, :score, :fen])
   end
 end

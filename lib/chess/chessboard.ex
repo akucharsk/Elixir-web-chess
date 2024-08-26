@@ -326,4 +326,51 @@ defmodule Chess.Chessboard do
     def update_castling_privileges(privileges, {7, 4}, {:black, {:king, _}}), do: %{privileges | black: %{long: false, short: false}}
     
     def update_castling_privileges(privileges, _pos, _piece), do: privileges
+
+    @doc """
+        This function is meant to be called AFTER a move is made. It returns a boolean indicating
+        if the square where a piece has moved is also in the list of possible moves of
+        a different piece of the same color, and type.
+        
+        ## Examples
+        
+        Let's say we have rooks on their home squares, and both on the A file and the 1st rank thery are no other pieces.
+        The moved piece is the A1 ({0, 0}) rook.
+
+        iex> has_twin_attacker?(board, {0, 4} = {to_rank, to_file})
+        true
+        # True is returned because the white H1 rook can also move to {0, 4} meaning E1
+
+        iex> has_twin_attacker?(board, {4, 0} = {to_rank, to_file})
+        false
+        # False is returned because the white H1 rook can't move to {4, 0} meaning A5. The black rook on A8 can, though and
+        # it's accounted for.
+
+        The same applies to the other pieces, like knights: if we have white knights on B1 ({0, 1}) and E4 ({3, 4})
+        Let's say the B1 knight is making a move.
+
+        iex> has_twin_attacker?(board, {2, 2} = {to_rank, to_file})
+        true
+
+        iex> has_twin_attacker?(board, {2, 0} = {to_rank, to_file})
+        false
+    """
+    def has_twin_attacker?(board, {to_rank, to_file}) do
+        IO.inspect({board, {to_rank, to_file}}, label: "has_twin_attacker?")
+        {color, {piece, _}} = piece_at(board, {to_rank, to_file})
+
+        board
+        |> Enum.filter(
+            fn 
+                {{^to_rank, ^to_file}, _} -> false
+                {{_, _}, {^color, {^piece, _}}} -> true
+                _ -> false
+            end
+        )
+        |> Enum.any?(
+            fn 
+                {_, {^color, {^piece, _}}} = pc -> {to_rank, to_file, nil} in possible_moves(board, pc)
+                _ -> false 
+            end)
+    end
 end

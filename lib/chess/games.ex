@@ -8,6 +8,8 @@ defmodule Chess.Games do
 
   alias Chess.Games.Game
   alias Chess.Accounts
+  alias Chess.Chessboard
+  alias Chess.FENParser
 
   @doc """
   Returns the list of games.
@@ -39,6 +41,7 @@ defmodule Chess.Games do
   def get_game!(id) do
     Game
     |> Repo.get!(id)
+    |> Repo.preload(:moves)
   end
 
   @doc """
@@ -137,4 +140,143 @@ defmodule Chess.Games do
   def ready_game?(%Game{black_id: nil} = game), do: false
   def ready_game?(_game), do: true
 
+
+  alias Chess.Games.Move
+
+  @doc """
+  Returns the list of moves.
+
+  ## Examples
+
+      iex> list_moves()
+      [%Move{}, ...]
+
+  """
+  def list_moves do
+    Repo.all(Move)
+  end
+
+  @doc """
+  Gets a single move.
+
+  Raises `Ecto.NoResultsError` if the Move does not exist.
+
+  ## Examples
+
+      iex> get_move!(123)
+      %Move{}
+
+      iex> get_move!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_move!(id), do: Repo.get!(Move, id)
+
+  @doc """
+  Creates a move.
+
+  ## Examples
+
+      iex> create_move(%{field: value})
+      {:ok, %Move{}}
+
+      iex> create_move(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_move(attrs \\ %{}) do
+    %Move{}
+    |> Move.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+    Registers a move by the last move made, the fullmoves count and the game id.
+    Creates a new move if white moves, and updates the last move if black moves.
+  """
+  def register_move(board, {:white, _, _, _} = last_move, fullmoves, game_id) do
+    %{game_id: game_id, move_number: fullmoves, 
+      white_move: move_string(board, last_move)}
+    |> create_move
+  end
+  def register_move(board, {:black, _, _, _} = last_move, fullmoves, game_id) do
+    game_id
+    |> get_game!
+    |> Map.get(:moves)
+    |> List.last
+    |> update_move(%{black_move: move_string(board, last_move)})
+  end
+
+  @doc """
+  Updates a move.
+
+  ## Examples
+
+      iex> update_move(move, %{field: new_value})
+      {:ok, %Move{}}
+
+      iex> update_move(move, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_move(%Move{} = move, attrs) do
+    move
+    |> Move.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a move.
+
+  ## Examples
+
+      iex> delete_move(move)
+      {:ok, %Move{}}
+
+      iex> delete_move(move)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_move(%Move{} = move) do
+    Repo.delete(move)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking move changes.
+
+  ## Examples
+
+      iex> change_move(move)
+      %Ecto.Changeset{data: %Move{}}
+
+  """
+  def change_move(%Move{} = move, attrs \\ %{}) do
+    Move.changeset(move, attrs)
+  end
+
+  defp move_string(_board, {_color, :king, _from, {_, _, :long_castling}}), do: "O-O-O"
+  defp move_string(_board, {_color, :king, _from, {_, _, :short_castling}}), do: "O-O"
+  defp move_string(_board, {_, :pawn, {from_row, from_col, _}, {to_row, to_col, :en_passant}}) do
+    "#{from_col}#{from_row}-#{from_col}x#{to_col}#{to_row}e.p."
+  end
+  defp move_string(_board, {_, :pawn, {from_row, from_col, _}, {to_row, from_col, {:promotion, into}}}) do
+    "#{from_col}#{from_row}-#{from_col}#{to_row}=#{into}"
+  end
+  defp move_string(_board, {_, :pawn, {from_row, from_col, _}, {to_row, to_col, {:promotion, into}}}) do
+    "#{from_col}#{from_row}-#{from_col}x#{to_col}#{to_row}=#{into}"
+  end
+  defp move_string(_board, {_, :pawn, {from_row, from_col, _}, {to_row, from_col, _}}) do
+    "#{from_col}#{from_row}-#{from_col}#{to_row}"
+  end
+  defp move_string(_board, {_, :pawn, {from_row, from_col, _}}, {to_row, to_col, _}) do
+    "#{from_col}#{from_row}-#{from_col}x#{to_col}#{to_row}"
+  end
+  defp move_string(board, {color, piece, {from_row, from_col, _}, {to_row, to_col, _}}) do
+    piece_code = FENParser.reverse_pieces(:white)[{color, piece}]
+
+    case Chessboard.has_twin_attacker?(board, {to_row, to_col}) do
+      true -> "#{from_col}#{from_row}-#{piece_code}#{from_row}#{to_col}#{to_row}"
+      false -> "#{from_col}#{from_row}-#{piece_code}#{to_col}#{to_row}"
+    end
+  end
 end
