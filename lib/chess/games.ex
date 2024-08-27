@@ -194,17 +194,17 @@ defmodule Chess.Games do
     Registers a move by the last move made, the fullmoves count and the game id.
     Creates a new move if white moves, and updates the last move if black moves.
   """
-  def register_move(board, {:white, _, _, _} = last_move, fullmoves, game_id) do
+  def register_move(board, %{color: :white} = last_move, fullmoves, game_id) do
     %{game_id: game_id, move_number: fullmoves, 
-      white_move: move_string(board, last_move)}
+      white_move: move_string(board, last_move) <> check_or_mate(last_move)}
     |> create_move
   end
-  def register_move(board, {:black, _, _, _} = last_move, fullmoves, game_id) do
+  def register_move(board, %{color: :black} = last_move, fullmoves, game_id) do
     game_id
     |> get_game!
     |> Map.get(:moves)
     |> List.last
-    |> update_move(%{black_move: move_string(board, last_move)})
+    |> update_move(%{black_move: move_string(board, last_move) <> check_or_mate(last_move)})
   end
 
   @doc """
@@ -254,29 +254,40 @@ defmodule Chess.Games do
     Move.changeset(move, attrs)
   end
 
-  defp move_string(_board, {_color, :king, _from, {_, _, :long_castling}}), do: "O-O-O"
-  defp move_string(_board, {_color, :king, _from, {_, _, :short_castling}}), do: "O-O"
-  defp move_string(_board, {_, :pawn, {from_row, from_col, _}, {to_row, to_col, :en_passant}}) do
+  defp move_string(_board, %{piece: :king, to: {_, _, :long_castling}}), do: "O-O-O"
+  defp move_string(_board, %{piece: :king, to: {_, _, :short_castling}}), do: "O-O"
+  defp move_string(_board, %{piece: :pawn, from: {from_row, from_col, _}, to: {to_row, to_col, :en_passant}}) do
     "#{from_col}#{from_row}-#{from_col}x#{to_col}#{to_row}e.p."
   end
-  defp move_string(_board, {_, :pawn, {from_row, from_col, _}, {to_row, from_col, {:promotion, into}}}) do
-    "#{from_col}#{from_row}-#{from_col}#{to_row}=#{into}"
-  end
-  defp move_string(_board, {_, :pawn, {from_row, from_col, _}, {to_row, to_col, {:promotion, into}}}) do
-    "#{from_col}#{from_row}-#{from_col}x#{to_col}#{to_row}=#{into}"
-  end
-  defp move_string(_board, {_, :pawn, {from_row, from_col, _}, {to_row, from_col, _}}) do
-    "#{from_col}#{from_row}-#{from_col}#{to_row}"
-  end
-  defp move_string(_board, {_, :pawn, {from_row, from_col, _}}, {to_row, to_col, _}) do
-    "#{from_col}#{from_row}-#{from_col}x#{to_col}#{to_row}"
-  end
-  defp move_string(board, {color, piece, {from_row, from_col, _}, {to_row, to_col, _}}) do
-    piece_code = FENParser.reverse_pieces(:white)[{color, piece}]
-
-    case Chessboard.has_twin_attacker?(board, {to_row, to_col}) do
-      true -> "#{from_col}#{from_row}-#{piece_code}#{from_row}#{to_col}#{to_row}"
-      false -> "#{from_col}#{from_row}-#{piece_code}#{to_col}#{to_row}"
+  defp move_string(_board, %{piece: :pawn, from: {from_row, from_col, _}, to: {to_row, to_col}, promotion: into, capture: capture}) do
+    case capture do
+      true -> "#{from_col}#{from_row}-#{from_col}x#{to_col}#{to_row}=#{into}"
+      false -> "#{from_col}#{from_row}-#{from_col}#{to_row}=#{into}"
     end
   end
+  defp move_string(_board, %{piece: :pawn, from: {from_row, from_col, _}, to: {to_row, to_col, _}, capture: capture}) do
+    case capture do
+      true -> "#{from_col}#{from_row}-#{from_col}x#{to_col}#{to_row}"
+      false -> "#{from_col}#{from_row}-#{from_col}#{to_row}"
+    end
+  end
+  defp move_string(board, %{color: color, piece: piece, from: {from_row, from_col, _}, to: {to_row, to_col, _}, capture: capture}) do
+    piece_code = 
+    FENParser.reverse_pieces(:white)
+    |> Map.get({:white, piece})
+
+    case Chessboard.has_twin_attacker?(board, {to_row, to_col}) do
+      true -> "#{from_col}#{from_row}-#{piece_code}#{from_row}"
+      false -> "#{from_col}#{from_row}-#{piece_code}"
+    end
+    <>
+    case capture do
+      true -> "x#{to_col}#{to_row}"
+      false -> "#{to_col}#{to_row}"
+    end
+  end
+
+  defp check_or_mate(%{mate: true}), do: "#"
+  defp check_or_mate(%{check: true}), do: "+"
+  defp check_or_mate(_), do: ""
 end

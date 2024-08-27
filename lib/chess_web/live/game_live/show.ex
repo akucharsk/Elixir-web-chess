@@ -40,6 +40,11 @@ defmodule ChessWeb.GameLive.Show do
       en_passant: en_passant,
       halfmove_clock: halfmove_clock,
       fullmoves: fullmoves} = FENParser.game_from_fen!(game.fen)
+    
+    last_move = %{
+      color: Chessboard.opposite_color(turn),
+      
+    }
 
     {:noreply,
      socket
@@ -49,8 +54,10 @@ defmodule ChessWeb.GameLive.Show do
      |> assign(:white_player, white)
      |> assign(:black_player, black)
      |> assign(:current_player, {color, id})
+     |> assign(:winner, nil)
      |> assign(:arangement, (if color == :white, do: {white, black}, else: {black, white}))
-     |> assign(board: board, turn: turn, moves: [], selected_piece: nil, selected_piece_pos: nil, last_move: nil)
+     |> assign(:last_move, %{color: nil, piece: nil, from: nil, to: nil, promotion: nil, capture: false, check: false, mate: false, draw: false})
+     |> assign(board: board, turn: turn, moves: [], selected_piece: nil, selected_piece_pos: nil)
      |> assign(castling_privileges: castling_privileges, fen_en_passant: en_passant, halfmove_clock: halfmove_clock, fullmoves: fullmoves)}
   end
 
@@ -81,6 +88,10 @@ defmodule ChessWeb.GameLive.Show do
     {:noreply, socket}
   end
 
+  def handle_event("resign", _params, socket) do
+    {:noreply, socket}
+  end
+
   @impl true
   def handle_info(%Broadcast{event: "enter_game", payload: %{white_username: white, black_username: black}}, socket) do
     {:noreply, 
@@ -98,14 +109,29 @@ defmodule ChessWeb.GameLive.Show do
   def handle_info(%Broadcast{event: "piece_move", payload: %{from: from, to: to, user_id: user_id}}, socket) do
     from = from ++ [nil] |> List.to_tuple
     to = to |> List.to_tuple
-    last_move = {socket.assigns.turn, Chessboard.piece_at(socket.assigns.board, from) |> elem(1) |> elem(0), from, to}
+
+    {color, {piece_type, _}} = Chessboard.piece_at(socket.assigns.board, from)
+    opposite = Chessboard.opposite_color(color)
+
+    {capture, value} = case Chessboard.piece_at(socket.assigns.board, to) do
+      nil -> {false, 0}
+      {^opposite, {piece, _}} -> {true, Chessboard.piece_value(piece)}
+    end
+
+    next_board = socket.assigns.board |> Chessboard.move_piece(from, to)
+
+    last_move = %{color: color, piece: piece_type, from: from, to: to, promotion: nil, capture: capture,
+      check: Chessboard.scan_checks(next_board, opposite),
+      mate: false, draw: false}
+    last_move = %{last_move | mate: last_move.check and Chessboard.cannot_move?(next_board, opposite)}
+    last_move = %{last_move | draw: not last_move.mate and Chessboard.cannot_move?(next_board, color)}
 
     socket =
     socket
     |> assign(:fullmoves, (if socket.assigns.turn == :black, do: socket.assigns.fullmoves + 1, else: socket.assigns.fullmoves))
-    |> assign(:halfmove_clock, (if last_move |> elem(1) == :pawn or Chessboard.piece_at(socket.assigns.board, to) != nil, do: 0, else: socket.assigns.halfmove_clock + 1))
-    |> assign(:board, 
-      Chessboard.move_piece(socket.assigns.board, from, to))
+    |> assign(:halfmove_clock, (if last_move.piece == :pawn or last_move.capture, do: 0, else: socket.assigns.halfmove_clock + 1))
+    |> assign(:board, next_board)
+    |> assign(:winner, (if last_move.mate, do: Accounts.get_user!(user_id), else: nil))
     |> assign(:last_move, last_move)
     |> assign(:turn, (if socket.assigns.turn == :white, do: :black, else: :white))
 

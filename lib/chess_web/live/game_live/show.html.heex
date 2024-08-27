@@ -45,6 +45,16 @@
   Waiting for players
 </.modal>
 
+<.modal :if={@last_move[:mate]} id="checkmate-modal" show on_cancel={JS.patch(~p"/games/#{@game.id}")}>
+  Checkmate! <%= @winner.username %> wins!
+  <.link navigate={~p"/games"}>
+    <.button>Back to games</.button>
+  </.link>
+</.modal>
+
+<.link :if={@last_move[:mate] or @last_move[:draw]} navigate={~p"/games"}>
+  <.button>Back to games</.button>
+</.link>
 <.live_component
   module={ChessWeb.ChessboardComponent}
   id={@game.id}
@@ -54,3 +64,7 @@
   arangement={@arangement}
   board={@board}
 />
+
+<.button phx-click="resign">Resign</.button>
+<.button phx-click="draw">Offer Draw</.button>
+

@@ -5,8 +5,12 @@ defmodule Chess.Chessboard do
 
     alias Chess.FENParser
 
-    defp opposite_color(:white), do: :black
-    defp opposite_color(:black), do: :white
+    @piece_values %{pawn: 1, knight: 3, bishop: 3, rook: 5, queen: 9, king: :inf}
+
+    def piece_value(piece), do: Map.get(@piece_values, 0, piece)
+
+    def opposite_color(:white), do: :black
+    def opposite_color(:black), do: :white
 
     @doc """
         Generates a chessboard
@@ -215,9 +219,7 @@ defmodule Chess.Chessboard do
     end
 
     @doc """
-        Scans if there are any checks on the board, returns :white if the white king is checked,
-        :black if the black king is checked, nil if there are no checks, and {:error, message} when both kings are checked.
-        Such a situation should never happen.
+        Scans if there are any checks on the board for a given color.
     """
 
     def scan_checks(board, :white) do
@@ -233,6 +235,16 @@ defmodule Chess.Chessboard do
     end
 
     @doc """
+        Checks if there are any legal moves for a given player
+    """
+    def cannot_move?(board, color) do
+        board
+        |> Enum.filter(fn {{_, _}, {^color, _}} -> true; _ -> false end)
+        |> Enum.flat_map(fn {{r, c}, piece} -> possible_moves(board, {r, c}) |> filter_checks(board, {r, c}, piece) end)
+        |> Enum.empty?
+    end
+
+    @doc """
         Filters out all moves that would result in a check for the player moving the piece.
     """
     def filter_checks(moves, board, {row, col}, {color, {_piece, _tag}}) do
@@ -244,11 +256,11 @@ defmodule Chess.Chessboard do
         end)
     end
 
-    defp check_en_passant({4, _col}, {:white, {:pawn, _}}, {:black, :pawn, {6, last_col, _spec_from}, {4, last_col, _spec_to}}) do
+    defp check_en_passant({4, _col}, {:white, {:pawn, _}}, %{from: {6, last_col, _}, to: {4, last_col, _}}) do
         [{5, last_col, :en_passant}]
     end
 
-    defp check_en_passant({3, _col}, {:black, {:pawn, _}}, {:white, :pawn, {1, last_col, _spec_from}, {3, last_col, _spec_to}}) do
+    defp check_en_passant({3, _col}, {:black, {:pawn, _}}, %{from: {1, last_col, _}, to: {3, last_col, _}}) do
         [{2, last_col, :en_passant}]
     end
 
@@ -356,7 +368,6 @@ defmodule Chess.Chessboard do
         false
     """
     def has_twin_attacker?(board, {to_rank, to_file}) do
-        IO.inspect({board, {to_rank, to_file}}, label: "has_twin_attacker?")
         {color, {piece, _}} = piece_at(board, {to_rank, to_file})
 
         board
