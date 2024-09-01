@@ -76,6 +76,32 @@ function removeHighlights() {
   highlighted_squares.length = 0
 }
 
+function createMoveGroup(move_code, id) {
+  let group = document.createElement("tr")
+  group.classList.add("move-group")
+  group.id = `move-group-${id}`
+
+  let move_num = document.createElement("td")
+  move_num.classList.add("move")
+  move_num.id = `move-${id}-num`
+  move_num.textContent = id
+
+  let white_move = document.createElement("td")
+  white_move.classList.add("move")
+  white_move.id = `move-${id}-white`
+  white_move.textContent = move_code
+
+  let black_move = document.createElement("td")
+  black_move.classList.add("move")
+  black_move.id = `move-${id}-black`
+
+  group.appendChild(move_num)
+  group.appendChild(white_move)
+  group.appendChild(black_move)
+
+  document.getElementById("recorder").appendChild(group)
+}
+
 function joinGameChannel(channelName, params) {
   chan = joinChannel(channelName, params)
 
@@ -91,6 +117,15 @@ function joinGameChannel(channelName, params) {
   chan.on("piece:move", event => {
     removeHighlights()
     chan.push("piece:move", event)
+  })
+
+  chan.on("move:register", event => {
+    console.log("Move register", event)
+    if (event.color === "white") {
+      createMoveGroup(event.move_code, event.move_count)
+    } else {
+      document.getElementById(`move-${event.move_count}-black`).textContent = event.move_code
+    }
   })
   return chan
 }

@@ -85,9 +85,21 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
-  def handle_info(%{event: "piece:move", payload: %{"from" => from, "to" => to, "user_id" => user_id}}, socket) do
+  def handle_info(%{event: "piece:move", payload: %{"from" => from, "to" => to, "user_id" => user_id, "promotion" => promo}}, socket) do
     if socket.assigns.current_user_id == user_id do
-      broadcast!(socket, "piece_move", %{from: from, to: to, user_id: user_id})
+      broadcast!(socket, "piece_move", %{from: from, to: to, user_id: user_id, promotion: promo})
+    end
+    {:noreply, socket}
+  end
+
+  def handle_info(%{event: "move:register", move: move}, socket) do
+    push(socket, "move:register", %{move_code: move.move_code, color: move.color, move_count: move.move_number})
+    {:noreply, socket}
+  end
+
+  def handle_info(%{event: "player:resign", payload: %{user_id: user_id}}, socket) do
+    if socket.assigns.current_user_id == user_id do
+      broadcast!(socket, "player_resign", %{user_id: user_id})
     end
     {:noreply, socket}
   end

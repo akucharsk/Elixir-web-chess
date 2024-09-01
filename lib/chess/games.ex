@@ -140,6 +140,16 @@ defmodule Chess.Games do
   def ready_game?(%Game{black_id: nil} = game), do: false
   def ready_game?(_game), do: true
 
+  @doc """
+    Returns the user who won the game.
+  """
+  def get_winner(%Game{} = game) do
+    case game.winner_id do
+      nil -> nil
+      winner_id -> Accounts.get_user!(winner_id)
+    end
+  end
+
 
   alias Chess.Games.Move
 
@@ -194,18 +204,18 @@ defmodule Chess.Games do
     Registers a move by the last move made, the fullmoves count and the game id.
     Creates a new move if white moves, and updates the last move if black moves.
   """
-  def register_move(board, %{color: :white} = last_move, fullmoves, game_id) do
-    %{game_id: game_id, move_number: fullmoves, 
-      white_move: move_string(board, last_move) <> check_or_mate(last_move)}
-    |> create_move
-  end
-  def register_move(board, %{color: :black} = last_move, fullmoves, game_id) do
-    game_id
-    |> get_game!
-    |> Map.get(:moves)
-    |> List.last
-    |> update_move(%{black_move: move_string(board, last_move) <> check_or_mate(last_move)})
-  end
+  def register_move(board, last_move, fullmoves, game_id) 
+    do
+      last_move
+      |> Map.put(:move_number, fullmoves)
+      |> Map.put(:game_id, game_id)
+      |> Map.put(:move_code, encode_move(last_move))
+      |> Map.update!(:from, &encode_position/1)
+      |> Map.update!(:to, &encode_position/1)
+      |> Map.update!(:piece, fn piece -> FENParser.reverse_pieces(:white)[{:white, piece}] end)
+      |> Map.update!(:color, &Atom.to_string/1)
+      |> create_move
+    end
 
   @doc """
   Updates a move.
@@ -254,40 +264,74 @@ defmodule Chess.Games do
     Move.changeset(move, attrs)
   end
 
-  defp move_string(_board, %{piece: :king, to: {_, _, :long_castling}}), do: "O-O-O"
-  defp move_string(_board, %{piece: :king, to: {_, _, :short_castling}}), do: "O-O"
-  defp move_string(_board, %{piece: :pawn, from: {from_row, from_col, _}, to: {to_row, to_col, :en_passant}}) do
-    "#{from_col}#{from_row}-#{from_col}x#{to_col}#{to_row}e.p."
-  end
-  defp move_string(_board, %{piece: :pawn, from: {from_row, from_col, _}, to: {to_row, to_col}, promotion: into, capture: capture}) do
-    case capture do
-      true -> "#{from_col}#{from_row}-#{from_col}x#{to_col}#{to_row}=#{into}"
-      false -> "#{from_col}#{from_row}-#{from_col}#{to_row}=#{into}"
-    end
-  end
-  defp move_string(_board, %{piece: :pawn, from: {from_row, from_col, _}, to: {to_row, to_col, _}, capture: capture}) do
-    case capture do
-      true -> "#{from_col}#{from_row}-#{from_col}x#{to_col}#{to_row}"
-      false -> "#{from_col}#{from_row}-#{from_col}#{to_row}"
-    end
-  end
-  defp move_string(board, %{color: color, piece: piece, from: {from_row, from_col, _}, to: {to_row, to_col, _}, capture: capture}) do
-    piece_code = 
-    FENParser.reverse_pieces(:white)
-    |> Map.get({:white, piece})
+    @doc """
+      Returns the human readable representation of a square. rank and file are 0-indexed.
 
-    case Chessboard.has_twin_attacker?(board, {to_row, to_col}) do
-      true -> "#{from_col}#{from_row}-#{piece_code}#{from_row}"
-      false -> "#{from_col}#{from_row}-#{piece_code}"
-    end
-    <>
-    case capture do
-      true -> "x#{to_col}#{to_row}"
-      false -> "#{to_col}#{to_row}"
-    end
-  end
+      ## Examples
 
-  defp check_or_mate(%{mate: true}), do: "#"
-  defp check_or_mate(%{check: true}), do: "+"
-  defp check_or_mate(_), do: ""
+      iex> encode_position({0, 0})
+      "a1"
+
+      iex> encode_position({7, 7})
+      "h8"
+    """
+    def encode_position({rank, file}) when rank in 0..7 and file in 0..7, do: "#{<<?a + file>>}#{rank + 1}"
+    def encode_position({rank, file, _}), do: encode_position({rank, file})
+    def encode_position(_), do: nil
+
+    def encode_move(%{mate: true} = last_move), do: encode_move(%{last_move | mate: false, check: false}) <> "#"
+    def encode_move(%{check: true} = last_move), do: encode_move(%{last_move | check: false}) <> "+"
+    def encode_move(%{piece: :king, to: {_, _, "short_castling"}}), do: "O-O"
+    def encode_move(%{piece: :king, to: {_, _, "long_castling"}}), do: "O-O-O"
+    def encode_move(%{piece: :pawn, promotion: promo} = last_move) when not is_nil(promo), do: encode_move(%{last_move | promotion: nil}) <> "=#{promo}"
+    def encode_move(%{piece: :pawn, to: {to_rank, to_file, "en_passant"}} = last_move), do: encode_move(%{last_move | to: {to_rank, to_file, nil}}) <> "e.p."
+    def encode_move(%{piece: :pawn, capture: nil, to: {to_rank, to_file, _}}), do: encode_position({to_rank, to_file})
+    def encode_move(%{piece: :pawn, from: {_, from_file, _}, to: {to_rank, to_file, _}}), do: "#{<<?a + from_file>>}x" <> encode_position({to_rank, to_file})
+    def encode_move(%{piece: piece, capture: capture, twin: false, to: {to_rank, to_file, _}}) do
+      "#{FENParser.reverse_pieces(:white)[{:white, piece}]}" 
+      <> (if capture, do: "x", else: "") 
+      <> encode_position({to_rank, to_file})
+    end
+    def encode_move(%{piece: piece, capture: capture, twin: true, from: {_, from_file, _}, to: {to_rank, to_file, _}}) do
+      "#{FENParser.reverse_pieces(:white)[{:white, piece}]}#{<<?a + from_file>>}"
+      <> (if capture, do: "x", else: "") 
+      <> encode_position({to_rank, to_file})
+    end
+
+    @doc """
+      Assigns a winner to a game. The result can be :white, :black or nil.
+    """
+    def assign_winner(%Game{} = game, :white), do: update_game(game, %{winner_id: game.white_id, white_score: 1.0, black_score: 0.0})
+    def assign_winner(%Game{} = game, :black), do: update_game(game, %{winner_id: game.black_id, white_score: 0.0, black_score: 1.0})
+    def assign_winner(%Game{} = game, nil), do: update_game(game, %{winner_id: nil, white_score: 0.5, black_score: 0.5})
+
+    @doc """
+      Fulfills a resignation request. Calls the above assign_winner function for the opposite color.
+    """
+    def resign(%Game{} = game, :white), do: assign_winner(game, :black)
+    def resign(%Game{} = game, :black), do: assign_winner(game, :white)
+
+    @doc """
+      Returns the opponent of a player in a game.
+    """
+    def opponent(%Game{white_id: white, black_id: black}, white), do: Accounts.get_user!(black)
+    def opponent(%Game{white_id: white, black_id: black}, black), do: Accounts.get_user!(white)
+
+    @doc """
+      Returns true if the player is about to promote a pawn.
+    """
+    def promotion?(board, {6, _, _} = from, {7, _, _} = _to) do
+      case Chessboard.piece_at(board, from) do
+        {:white, {:pawn, _}} -> true
+        _ -> false
+      end
+    end
+    def promotion?(board, {1, _, _} = from, {0, _, _} = _to) do
+      case Chessboard.piece_at(board, from) do
+        {:black, {:pawn, _}} -> true
+        _ -> false
+      end
+    end
+    def promotion?(board, {rank, file} = _from, {_, _, _} = to), do: promotion?(board, {rank, file, nil}, to)
+    def promotion?(_, _, _), do: false
 end

@@ -86,6 +86,7 @@ defmodule Chess.Chessboard do
             end
         end)
     end
+    defp pawn_takes(_board, _pos, _piece), do: []
 
     # ROOKS
     def possible_moves(board, {row, col}, {_color, {:rook, _}} = piece) do
@@ -186,7 +187,7 @@ defmodule Chess.Chessboard do
                 case piece_at(board, {row, col}) do
                     nil -> {acc ++ [{row, col, nil}], :ok}
                     {^color, _} -> {acc, :stop}
-                    _ -> {acc ++ [{row, col, :take}], :stop}
+                    _ -> {acc ++ [{row, col, nil}], :stop}
                 end     
             end)
         |> elem(0)
@@ -202,7 +203,7 @@ defmodule Chess.Chessboard do
             case piece_at(board, {r, c}) do
                 nil -> {r, c, nil}
                 {^color, _} -> :invalid
-                _ -> {r, c, :take}
+                _ -> {r, c, nil}
             end
         end)
         |> Enum.filter(&(&1 != :invalid))
@@ -214,7 +215,7 @@ defmodule Chess.Chessboard do
     def is_attacked?(board, {row, col}, color) do
         board
         |> Enum.filter(fn {{_, _}, {^color, _}} -> true; _ -> false end)
-        |> Enum.flat_map(fn {{r, c}, _} -> possible_moves(board, {r, c}) end)
+        |> Enum.flat_map(fn {{r, c}, _} = pc -> possible_moves(board, {r, c}) ++ pawn_takes(board, {r, c}, pc) end)
         |> Enum.any?(fn {r, c, _spec} -> {r, c} == {row, col} end)
     end
 
@@ -340,8 +341,8 @@ defmodule Chess.Chessboard do
     def update_castling_privileges(privileges, _pos, _piece), do: privileges
 
     @doc """
-        This function is meant to be called AFTER a move is made. It returns a boolean indicating
-        if the square where a piece has moved is also in the list of possible moves of
+        This function is meant to be called BEFORE a move is made. It returns a boolean indicating
+        if the square where a piece wants to move is also in the list of possible moves of
         a different piece of the same color, and type.
         
         ## Examples
@@ -367,21 +368,33 @@ defmodule Chess.Chessboard do
         iex> has_twin_attacker?(board, {2, 0} = {to_rank, to_file})
         false
     """
-    def has_twin_attacker?(board, {to_rank, to_file}) do
-        {color, {piece, _}} = piece_at(board, {to_rank, to_file})
+    def has_twin_attacker?(board, {from_rank, from_file}, {to_rank, to_file}) do
+        {color, {piece, _}} = piece_at(board, {from_rank, from_file})
 
         board
         |> Enum.filter(
             fn 
-                {{^to_rank, ^to_file}, _} -> false
+                {{^from_rank, ^from_file}, _} -> false
                 {{_, _}, {^color, {^piece, _}}} -> true
                 _ -> false
             end
         )
         |> Enum.any?(
             fn 
-                {_, {^color, {^piece, _}}} = pc -> {to_rank, to_file, nil} in possible_moves(board, pc)
-                _ -> false 
+                {{rank, file}, {^color, {^piece, _}}}-> {to_rank, to_file, nil} in possible_moves(board, {rank, file})
             end)
+    end
+    def has_twin_attacker?(board, {from_rank, from_file, _}, {to_rank, to_file, _}), do: has_twin_attacker?(board, {from_rank, from_file}, {to_rank, to_file})
+
+    @doc """
+        Promotes a pawn to the piece specified by the code (Q, R, B, N)
+    """
+    def promote_pawn(board, _, nil), do: board
+    def promote_pawn(board, {row, col, _}, code), do: promote_pawn(board, {row, col}, code)
+    def promote_pawn(board, {row, col}, code) do
+        {color, _} = piece_at(board, {row, col})
+        {:white, {piece, "white" <> piece_str}} = FENParser.white_pieces[code]
+        board
+        |> Map.put({row, col}, {color, {piece, Atom.to_string(color) <> piece_str}})
     end
 end

@@ -43,7 +43,6 @@ defmodule ChessWeb.GameLive.Show do
     
     last_move = %{
       color: Chessboard.opposite_color(turn),
-      
     }
 
     {:noreply,
@@ -53,12 +52,38 @@ defmodule ChessWeb.GameLive.Show do
      |> assign(:pending, not ready?)
      |> assign(:white_player, white)
      |> assign(:black_player, black)
-     |> assign(:current_player, {color, id})
-     |> assign(:winner, nil)
+     |> assign(:current_player, color)
+     |> assign(winner: nil, resign: false, game_over: false)
      |> assign(:arangement, (if color == :white, do: {white, black}, else: {black, white}))
+     |> assign(:promotion, nil)
      |> assign(:last_move, %{color: nil, piece: nil, from: nil, to: nil, promotion: nil, capture: false, check: false, mate: false, draw: false})
      |> assign(board: board, turn: turn, moves: [], selected_piece: nil, selected_piece_pos: nil)
      |> assign(castling_privileges: castling_privileges, fen_en_passant: en_passant, halfmove_clock: halfmove_clock, fullmoves: fullmoves)}
+  end
+
+  defp load_game!(id, socket) do
+    game = Games.get_game!(id)
+
+    white = if game.white_id, do: Accounts.get_user!(game.white_id).username, else: nil
+    black = if game.black_id, do: Accounts.get_user!(game.black_id).username, else: nil
+    color = if socket.assigns.current_user.id == game.white_id, do: :white, else: :black
+
+    %{board: board,
+      turn: turn,
+      castling_privileges: castling_privileges,
+      en_passant: en_passant,
+      halfmove_clock: halfmove_clock,
+      fullmoves: fullmoves} = FENParser.game_from_fen!(game.fen)
+    
+    Phoenix.PubSub.broadcast!(Chess.PubSub, "room:#{id}", %{event: "moves:load", payload: %{moves: game.moves}})
+    socket
+    |> assign(:game, game)
+    |> assign(:pending, not Games.ready_game?(game))
+    |> assign(:white_player, white)
+    |> assign(:black_player, black)
+    |> assign(:current_player, color)
+    |> assign(:winner, Games.get_winner(game))
+    
   end
 
   @impl true
@@ -80,16 +105,50 @@ defmodule ChessWeb.GameLive.Show do
 
   def handle_event("square_click", %{"rank" => rank, "field" => field}, socket) do
     square = {rank |> String.to_integer, field |> String.to_integer}
-    if destination = Enum.find(socket.assigns.moves, fn {row, col, _spec} -> {row, col} == square end) do
-      send self(), {:internal, :move_piece, %{from: socket.assigns.selected_piece_pos, to: destination, user_id: socket.assigns.current_user.id}}
-    else
-      send self(), {:internal, :square_click, %{square: square, user_id: socket.assigns.current_user.id}}
+
+    :ok =
+    cond do
+      socket.assigns.game_over ->
+        :ok
+
+      socket.assigns.promotion ->
+        :ok
+
+      destination = Enum.find(socket.assigns.moves, fn {row, col, _spec} -> {row, col} == square end) ->
+        send self(), {:internal, :move_piece, %{from: socket.assigns.selected_piece_pos, to: destination, user_id: socket.assigns.current_user.id}}
+        :ok
+
+      true ->
+        send self(), {:internal, :square_click, %{square: square, user_id: socket.assigns.current_user.id}}
+        :ok
     end
     {:noreply, socket}
   end
 
+  def handle_event("promotion_click", %{"piece" => piece}, socket) do
+    
+    from = socket.assigns.last_move.from |> Tuple.to_list
+    to = socket.assigns.last_move.to |> Tuple.to_list
+
+    Endpoint.broadcast!("room:#{socket.assigns.game.id}", "piece:move", 
+    %{from: from, to: to, user_id: socket.assigns.current_user.id, promotion: piece})
+
+    {:noreply, assign(socket, promotion: nil)}
+  end
+
   def handle_event("resign", _params, socket) do
-    {:noreply, socket}
+    if socket.assigns.resign do
+      {:ok, _} = Games.resign(socket.assigns.game, socket.assigns.current_player)
+      Phoenix.PubSub.broadcast!(Chess.PubSub, "room:#{socket.assigns.game.id}", 
+        %{event: "player:resign", payload: %{user_id: socket.assigns.current_user.id}})
+      {:noreply, socket}
+    else
+      {:noreply, assign(socket, resign: true)}
+    end
+  end
+
+  def handle_event("cancel_resign", _params, socket) do
+    {:noreply, assign(socket, resign: false)}
   end
 
   @impl true
@@ -98,7 +157,9 @@ defmodule ChessWeb.GameLive.Show do
       socket
       |> assign(:white_player, white)
       |> assign(:black_player, black)
-      |> assign(:pending, false)}
+      |> assign(:pending, false)
+      |> assign(:game, Games.get_game!(socket.assigns.game.id))
+      |> assign(:arangement, (if socket.assigns.current_player == :white, do: {white, black}, else: {black, white}))}
   end
 
   def handle_info(%Broadcast{event: "terminate"}, socket) do
@@ -106,7 +167,7 @@ defmodule ChessWeb.GameLive.Show do
   end
 
   # Handle event sent by the channel. Finalize the move on the board
-  def handle_info(%Broadcast{event: "piece_move", payload: %{from: from, to: to, user_id: user_id}}, socket) do
+  def handle_info(%Broadcast{event: "piece_move", payload: %{from: from, to: to, user_id: user_id, promotion: promo}}, socket) do
     from = from ++ [nil] |> List.to_tuple
     to = to |> List.to_tuple
 
@@ -114,21 +175,26 @@ defmodule ChessWeb.GameLive.Show do
     opposite = Chessboard.opposite_color(color)
 
     {capture, value} = case Chessboard.piece_at(socket.assigns.board, to) do
-      nil -> {false, 0}
-      {^opposite, {piece, _}} -> {true, Chessboard.piece_value(piece)}
+      nil -> {nil, 0}
+      {^opposite, {piece, _}} -> {FENParser.reverse_pieces(:white)[{:white, piece}], Chessboard.piece_value(piece)}
     end
 
-    next_board = socket.assigns.board |> Chessboard.move_piece(from, to)
+    next_board = 
+    socket.assigns.board 
+    |> Chessboard.move_piece(from, to)
+    |> Chessboard.promote_pawn(to, promo)
 
-    last_move = %{color: color, piece: piece_type, from: from, to: to, promotion: nil, capture: capture,
+    last_move = %{color: color, piece: piece_type, from: from, to: to, promotion: promo, capture: capture,
       check: Chessboard.scan_checks(next_board, opposite),
-      mate: false, draw: false}
+      mate: false, draw: false, twin: Chessboard.has_twin_attacker?(socket.assigns.board, from, to)}
     last_move = %{last_move | mate: last_move.check and Chessboard.cannot_move?(next_board, opposite)}
     last_move = %{last_move | draw: not last_move.mate and Chessboard.cannot_move?(next_board, color)}
 
+    move_count = socket.assigns.fullmoves
+
     socket =
     socket
-    |> assign(:fullmoves, (if socket.assigns.turn == :black, do: socket.assigns.fullmoves + 1, else: socket.assigns.fullmoves))
+    |> assign(:fullmoves, (if socket.assigns.turn == :black, do: move_count + 1, else: move_count))
     |> assign(:halfmove_clock, (if last_move.piece == :pawn or last_move.capture, do: 0, else: socket.assigns.halfmove_clock + 1))
     |> assign(:board, next_board)
     |> assign(:winner, (if last_move.mate, do: Accounts.get_user!(user_id), else: nil))
@@ -136,20 +202,33 @@ defmodule ChessWeb.GameLive.Show do
     |> assign(:turn, (if socket.assigns.turn == :white, do: :black, else: :white))
 
     if user_id == socket.assigns.current_user.id do
-      spawn(fn -> handle_info({:internal, :register_move}, socket) end)
+      spawn(fn -> handle_info({:internal, :register_move, move_count}, socket) end)
     end
 
     {:noreply, socket}
+  end
+
+  def handle_info(%Broadcast{event: "player_resign", payload: %{user_id: user_id}}, socket) do
+    {:noreply,
+      socket
+      |> assign(resign: true, game_over: true)
+      |> assign(:winner, Games.opponent(socket.assigns.game, user_id))}
   end
 
   # Handle internal events
   # Handle the event of clicking on a highlighted square pushing the move to the client
   def handle_info({:internal, :move_piece, %{from: from, to: to, user_id: user_id}}, socket) do
     turn = socket.assigns.turn
-    if socket.assigns.current_player |> elem(0) == turn do
+    if socket.assigns.current_player == turn do
 
-      Endpoint.broadcast!("room:#{socket.assigns.game.id}", "piece:move", 
-      %{from: from |> Tuple.to_list, to: to |> Tuple.to_list, user_id: user_id})
+      socket =
+      if Games.promotion?(socket.assigns.board, from, to) do
+        assign(socket, promotion: turn, last_move: %{socket.assigns.last_move | from: from, to: to})
+      else
+        Endpoint.broadcast!("room:#{socket.assigns.game.id}", "piece:move", 
+        %{from: from |> Tuple.to_list, to: to |> Tuple.to_list, user_id: user_id, promotion: nil})
+        socket
+      end
 
       castling_privileges = 
       socket.assigns.castling_privileges
@@ -168,7 +247,7 @@ defmodule ChessWeb.GameLive.Show do
 
   def handle_info({:internal, :square_click, %{square: square, user_id: user_id}}, socket) do
     turn = socket.assigns.turn
-    if socket.assigns.current_player |> elem(0) == turn do
+    if socket.assigns.current_player == turn do
       moves = case Chessboard.piece_at(socket.assigns.board, square) do
         {^turn, {piece, tag}} -> 
           socket.assigns.board
@@ -192,7 +271,7 @@ defmodule ChessWeb.GameLive.Show do
     end
   end
 
-  def handle_info({:internal, :register_move}, socket) do
+  def handle_info({:internal, :register_move, move_count}, socket) do
     assigns = socket.assigns
     game = socket.assigns.game
 
@@ -208,14 +287,14 @@ defmodule ChessWeb.GameLive.Show do
           fullmoves: assigns.fullmoves})
     })
     
-    case Games.register_move(assigns.board, assigns.last_move, assigns.fullmoves, game.id) do
-      {:ok, _} -> {:noreply, socket}
-      {:error, changeset} -> 
-        IO.inspect(changeset)
+    case Games.register_move(assigns.board, assigns.last_move, move_count, game.id) do
+      {:ok, move} -> 
+        Phoenix.PubSub.broadcast!(Chess.PubSub, "room:#{game.id}", %{event: "move:register", move: move})
         {:noreply, socket}
+      {:error, changeset} -> 
+        IO.inspect(changeset, label: "Move registration error")
+        {:noreply, socket |> put_flash(:error, "Unable to register move")}
     end
-
-    {:noreply, socket}
   end
 
   def handle_info(payload, socket) do

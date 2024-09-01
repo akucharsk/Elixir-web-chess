@@ -8,6 +8,7 @@ defmodule Chess.Games.Game do
     field :fen, :string
     field :white_score, :decimal
     field :black_score, :decimal
+    field :result_reason, :string
     
     belongs_to :winner, User, foreign_key: :winner_id
     belongs_to :white, User, foreign_key: :white_id
@@ -21,7 +22,7 @@ defmodule Chess.Games.Game do
   @doc false
   def changeset(game, attrs) do
     game
-    |> cast(attrs, [:white_id, :black_id, :fen, :winner_id, :white_score, :black_score])
+    |> cast(attrs, [:white_id, :black_id, :fen, :winner_id, :white_score, :black_score, :result_reason])
     |> validate_required([:fen])
   end
 end

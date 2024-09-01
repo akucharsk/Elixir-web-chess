@@ -13,7 +13,7 @@
     display: flex;
   }
   
-  .white-square, .black-square {
+  .white-square, .black-square, .promotion-piece {
     width: 80px;
     height: 80px;
     display: flex;
@@ -49,6 +49,10 @@
     justify-content: center;
     margin: auto;
     float: left
+  }
+
+  .promotion-piece {
+    background-color: aquamarine;
   }
   
   .black-bishop, .black-king, .black-knight, .black-pawn, .black-queen, .black-rook,
@@ -92,4 +96,28 @@
   }
   .white-rook {
     background-image: url("/images/white-rook.png");
+  }
+
+  #move-register {
+    display: flex;
+    justify-content: center;
+    float: right;
+    margin: auto;
+  }
+
+  #game-render-frame {
+    display: flex;
+    justify-content: center;
+    margin: auto;
+  }
+
+  #recorder {
+    justify-content: center;
+    margin: auto;
+    border: 2px solid #333;
+  }
+
+  td.move {
+    justify-content: center;
+    border: 2px solid #333;
   }
