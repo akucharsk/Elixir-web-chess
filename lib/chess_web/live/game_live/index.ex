@@ -4,14 +4,19 @@ defmodule ChessWeb.GameLive.Index do
   alias Chess.Games
   alias Chess.Games.Game
 
+  alias Phoenix.LiveView
+
   alias Chess.Accounts
   alias Phoenix.Channel
 
   alias ChessWeb.Endpoint
 
+  alias Phoenix.Socket.Broadcast
+
   @impl true
   def mount(_params, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
+    Endpoint.subscribe("room:lobby")
     {:ok, 
       socket
       |> assign(:current_user, user)
@@ -26,7 +31,7 @@ defmodule ChessWeb.GameLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
     |> assign(:page_title, "Edit Game")
-    |> assign(:game, Games.get_game!(id))
+    |> assign(:games, Games.get_game!(id))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -57,8 +62,13 @@ defmodule ChessWeb.GameLive.Index do
     {:noreply, stream_insert(socket, :games, game)}
   end
 
+  def handle_info(msg, socket) do
+    {:noreply, socket}
+  end
+
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
+
     game = Games.get_game!(id)
     {:ok, _} = Games.delete_game(game)
 

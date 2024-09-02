@@ -76,7 +76,7 @@ defmodule Chess.Chessboard do
 
     defp pawn_takes(board, {row, col}, {color, {:pawn, _}}) do
         row = if color == :white, do: row + 1, else: row - 1
-        [{row, col + 1, :take}, {row, col - 1, :take}]
+        [{row, col + 1, nil}, {row, col - 1, nil}]
         |> Enum.filter(fn {r, c, _action} -> 
             r in 0..7 and c in 0..7 and
             case piece_at(board, {r, c}) do

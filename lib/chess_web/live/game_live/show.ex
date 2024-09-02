@@ -223,6 +223,7 @@ defmodule ChessWeb.GameLive.Show do
 
       socket =
       if Games.promotion?(socket.assigns.board, from, to) do
+        Phoenix.PubSub.broadcast!(Chess.PubSub, "room:#{socket.assigns.game.id}", %{event: "piece:promotion", payload: %{from: from, to: to, user_id: user_id}})
         assign(socket, promotion: turn, last_move: %{socket.assigns.last_move | from: from, to: to})
       else
         Endpoint.broadcast!("room:#{socket.assigns.game.id}", "piece:move", 

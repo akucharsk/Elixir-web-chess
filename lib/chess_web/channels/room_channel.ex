@@ -50,7 +50,7 @@ defmodule ChessWeb.RoomChannel do
     {:stop, :leave, socket}
   end
 
-  def handle_in("square:click", payload, socket) do
+  def handle_in("square:click", _payload, socket) do
     IO.inspect(socket)
     {:noreply, socket}
   end
@@ -92,6 +92,13 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
+  def handle_info(%{event: "piece:promotion", payload: %{from: from, to: to, user_id: user_id}}, socket) do
+    if socket.assigns.current_user_id == user_id do
+      push(socket, "piece:promotion", %{from: from |> Tuple.to_list, to: to |> Tuple.to_list, user_id: user_id})
+    end
+    {:noreply, socket}
+  end
+
   def handle_info(%{event: "move:register", move: move}, socket) do
     push(socket, "move:register", %{move_code: move.move_code, color: move.color, move_count: move.move_number})
     {:noreply, socket}
@@ -104,6 +111,16 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
+  def handle_info(%{event: "delete:game", pid: pid, user_id: user_id}, socket) do
+    if socket.assigns.current_user_id == user_id do
+      broadcast!(socket, "delete_game", %{pid: pid})
+    end
+    {:noreply, socket}
+  end
+
+  # LiveViev events sent from one to the other. They should be ignored in the channel.
+
+  # Default handler for unhandled messages, in general it shouldn't be invoked.
   def handle_info(msg, socket) do
     IO.warn("Unhandled message #{inspect(msg)}")
     {:noreply, socket}

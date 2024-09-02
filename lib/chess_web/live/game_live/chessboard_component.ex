@@ -9,9 +9,7 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
         <div id="game-render-frame">
             <div id="chessboard-border">
                 <div> <%= @arangement |> elem(1) %> </div>
-                <div :if={@promotion} id="promotion-area">
-                    <.promotion_pieces color={Atom.to_string(@player)}/>
-                </div>
+                <.promotion_pieces promotion={@promotion} color={@player} />
                 <div id="chessboard" class="chessboard">
                 <%= for rank <- range(@player) do %>
                     <div class="row-number">
@@ -51,10 +49,16 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
 
     defp promotion_pieces(assigns) do
         ~H"""
-            <div class={"promotion-piece #{@color}-queen"} phx-click="promotion_click" phx-value-piece="Q"></div>
-            <div class={"promotion-piece #{@color}-rook"} phx-click="promotion_click" phx-value-piece="R"></div>
-            <div class={"promotion-piece #{@color}-bishop"} phx-click="promotion_click" phx-value-piece="B"></div>
-            <div class={"promotion-piece #{@color}-knight"} phx-click="promotion_click" phx-value-piece="N"></div>
+            <div id="promotion-pieces">
+                <div :if={@promotion} class="promotion-area">
+                    <div class={"promotion-piece #{@color}-knight"} id="promo-knight" phx-click="promotion_click" phx-value-piece="N"></div>
+                </div>
+                <div :if={@promotion} class="promotion-area">
+                    <div class={"promotion-piece #{@color}-rook"} id="promo-rook" phx-click="promotion_click" phx-value-piece="R"></div>
+                    <div class={"promotion-piece #{@color}-queen"} id="promo-queen" phx-click="promotion_click" phx-value-piece="Q"></div>
+                    <div class={"promotion-piece #{@color}-bishop"} id="promo-bishop" phx-click="promotion_click" phx-value-piece="B"></div>
+                </div>
+            </div>
         """
     end
 

@@ -53,6 +53,17 @@ let socket = new Socket("/socket", {params: {token: window.userToken}})
 // Finally, connect to the socket:
 socket.connect()
 
+function positionPromotionArea(to) {
+  let promotionArea = document.getElementById("promotion-pieces")
+  let promotionSquare = document.getElementById(`${to[0]}_${to[1]}`)
+  var rect = promotionSquare.getBoundingClientRect()
+  
+  promotionArea.style.top = `${rect.top + rect.height}px`
+  promotionArea.style.left = `${rect.left - rect.width}px`
+  promotionArea.style.display = "block"
+  console.log("Promotion area", promotionArea.style.top, promotionArea.style.left)
+}
+
 function joinChannel(channelName, params) {
   let channel = socket.channel(channelName, params)
   channel.join()
@@ -117,6 +128,12 @@ function joinGameChannel(channelName, params) {
   chan.on("piece:move", event => {
     removeHighlights()
     chan.push("piece:move", event)
+  })
+
+  chan.on("piece:promotion", event => {
+    removeHighlights()
+    highlighted_squares.push(`${event.to[0]}_${event.to[1]}`)
+    positionPromotionArea(event.to)
   })
 
   chan.on("move:register", event => {

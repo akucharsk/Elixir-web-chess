@@ -54,6 +54,12 @@
   .promotion-piece {
     background-color: aquamarine;
   }
+
+  .promotion-area {
+    display: flex;
+    justify-content: center;
+    margin: auto;
+  }
   
   .black-bishop, .black-king, .black-knight, .black-pawn, .black-queen, .black-rook,
   .white-bishop, .white-king, .white-knight, .white-pawn, .white-queen, .white-rook {
@@ -115,6 +121,14 @@
     justify-content: center;
     margin: auto;
     border: 2px solid #333;
+  }
+
+  #promotion-pieces{
+    position: relative;
+  }
+
+  #chessboard-border {
+    position: relative;
   }
 
   td.move {
