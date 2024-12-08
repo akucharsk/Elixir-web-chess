@@ -2,22 +2,17 @@ defmodule ChessWeb.GameLive.Index do
   use ChessWeb, :live_view
 
   alias Chess.Games
-  alias Chess.Games.Game
-
-  alias Phoenix.LiveView
 
   alias Chess.Accounts
-  alias Phoenix.Channel
 
   alias ChessWeb.Endpoint
 
-  alias Phoenix.Socket.Broadcast
 
   @impl true
   def mount(_params, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
     Endpoint.subscribe("room:lobby")
-    {:ok, 
+    {:ok,
       socket
       |> assign(:current_user, user)
       |> stream(:games, Games.list_games())}
@@ -37,17 +32,17 @@ defmodule ChessWeb.GameLive.Index do
   defp apply_action(socket, :new, _params) do
     socket
     |> assign(:page_title, "New Game")
-    
+
     case Games.fetch_ready_game(socket.assigns.current_user.id) do
-      {:ok, game} -> 
-        ChessWeb.Endpoint.broadcast_from!(self, "room:lobby", "new_game", %{game_id: game.id, pending: not Games.ready_game?(game)})
+      {:ok, game} ->
+        ChessWeb.Endpoint.broadcast_from!(self(), "room:lobby", "new_game", %{game_id: game.id, pending: not Games.ready_game?(game)})
         socket
         |> assign(:game, game)
         |> push_navigate(to: ~p"/games/#{game.id}")
-      {:error, _} -> 
+      {:error, changeset} ->
         IO.inspect("Unable to create or join a game")
         socket
-        |> put_flash(:error, "Unable to create or join a game")
+        |> put_flash(:error, "Unable to create or join a game, reason: #{inspect(changeset)}")
     end
   end
 
@@ -62,7 +57,7 @@ defmodule ChessWeb.GameLive.Index do
     {:noreply, stream_insert(socket, :games, game)}
   end
 
-  def handle_info(msg, socket) do
+  def handle_info(_msg, socket) do
     {:noreply, socket}
   end
 
@@ -72,7 +67,7 @@ defmodule ChessWeb.GameLive.Index do
     game = Games.get_game!(id)
     {:ok, _} = Games.delete_game(game)
 
-    Endpoint.broadcast_from!(self, "room:#{id}", "terminate", %{})
+    Endpoint.broadcast_from!(self(), "room:#{id}", "terminate", %{})
 
     {:noreply, stream_delete(socket, :games, game)}
   end

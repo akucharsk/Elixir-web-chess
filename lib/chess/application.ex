@@ -18,7 +18,8 @@ defmodule Chess.Application do
       # {Chess.Worker, arg},
       # Start to serve requests, typically the last entry
       ChessWeb.Endpoint,
-      ChessWeb.Presence
+      ChessWeb.Presence,
+      {Chess.GameSupervisor, strategy: :one_for_one, name: Chess.GameSupervisor}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

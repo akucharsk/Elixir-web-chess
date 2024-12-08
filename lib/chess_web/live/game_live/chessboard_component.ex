@@ -37,11 +37,15 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
                 </div>
                 <div> <%= @arangement |> elem(0) %> </div>
             </div>
-            <div id="move-register">
-                <.live_component
-                module={ChessWeb.GameLive.MoveRegisterComponent}
-                id={@user.id}
-                />
+            <div id="game_params" class="c-a">
+                <div id={timer_class(@opponent)} class="c-a"> <%= @timers[@opponent] %> </div>
+                <div id="move-register" class="c-a">
+                    <.live_component
+                    module={ChessWeb.GameLive.MoveRegisterComponent}
+                    id={@user.id}
+                    />
+                </div>
+                <div id={timer_class(@player)} class="c-a"> <%= @timers[@player] %>  </div>
             </div>
         </div>
         """
@@ -79,4 +83,8 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
 
     defp range(:white), do: 7..0
     defp range(:black), do: 0..7
+
+    defp timer_class(:white), do: "white-timer"
+    defp timer_class(:black), do: "black-timer"
+
 end

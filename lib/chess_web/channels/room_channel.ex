@@ -42,7 +42,7 @@ defmodule ChessWeb.RoomChannel do
   end
 
   def handle_in("enter_game", _payload, socket) do
-    send self, :enter_game
+    send self(), :enter_game
     {:noreply, socket}
   end
 
