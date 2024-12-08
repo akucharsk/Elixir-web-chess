@@ -42,6 +42,34 @@ defmodule Chess.Chessboard do
         piece_at(board, {row, col})
     end
 
+    defp extra_square(board, {1, col}, :white) do
+        case piece_at(board, {3, col}) do
+            nil -> [{3, col, nil}]
+            _ -> []
+        end
+    end
+    defp extra_square(board, {6, col}, :black) do
+        case piece_at(board, {4, col}) do
+            nil -> [{4, col, nil}]
+            _ -> []
+        end
+    end
+    defp extra_square(_board, _pos, _color), do: []
+
+    defp pawn_takes(board, {row, col}, {color, {:pawn, _}}) do
+        row = if color == :white, do: row + 1, else: row - 1
+        [{row, col + 1, nil}, {row, col - 1, nil}]
+        |> Enum.filter(fn {r, c, _action} ->
+            r in 0..7 and c in 0..7 and
+            case piece_at(board, {r, c}) do
+                nil -> false
+                {^color, _} -> false
+                _ -> true
+            end
+        end)
+    end
+    defp pawn_takes(_board, _pos, _piece), do: []
+
     @doc """
         Returns a list of possible moves for a piece at the given position
     """
@@ -60,41 +88,13 @@ defmodule Chess.Chessboard do
         ++ pawn_takes(board, {row, col}, piece)
     end
 
-    defp extra_square(board, {1, col}, :white) do
-        case piece_at(board, {3, col}) do
-            nil -> [{3, col, nil}]
-            _ -> []
-        end
-    end
-    defp extra_square(board, {6, col}, :black) do
-        case piece_at(board, {4, col}) do
-            nil -> [{4, col, nil}]
-            _ -> []
-        end
-    end
-    defp extra_square(_board, _pos, _color), do: []
-
-    defp pawn_takes(board, {row, col}, {color, {:pawn, _}}) do
-        row = if color == :white, do: row + 1, else: row - 1
-        [{row, col + 1, nil}, {row, col - 1, nil}]
-        |> Enum.filter(fn {r, c, _action} -> 
-            r in 0..7 and c in 0..7 and
-            case piece_at(board, {r, c}) do
-                nil -> false
-                {^color, _} -> false
-                _ -> true
-            end
-        end)
-    end
-    defp pawn_takes(_board, _pos, _piece), do: []
-
     # ROOKS
     def possible_moves(board, {row, col}, {_color, {:rook, _}} = piece) do
         left = for i <- col..0, i != col, into: [], do: {row, i, nil}
         right = for i <- col..7, i != col, into: [], do: {row, i, nil}
         up = for i <- row..7, i != row, into: [], do: {i, col, nil}
         down = for i <- row..0, i != row, into: [], do: {i, col, nil}
-        
+
         validate_straight_line(board, left, piece) ++
         validate_straight_line(board, right, piece) ++
         validate_straight_line(board, up, piece) ++
@@ -134,7 +134,7 @@ defmodule Chess.Chessboard do
     end
 
     def possible_moves(_board, _pos, nil), do: []
-    
+
     @doc """
         Moves a piece from one position to another, returns the updated board.
     """
@@ -181,14 +181,14 @@ defmodule Chess.Chessboard do
     """
     def validate_straight_line(board, moves, {color, {_piece, _tag}}) do
         moves
-        |> Enum.reduce({[], :ok}, fn 
+        |> Enum.reduce({[], :ok}, fn
             {_row, _col, _action}, {acc, :stop} -> {acc, :stop}
-            {row, col, nil}, {acc, :ok} -> 
+            {row, col, nil}, {acc, :ok} ->
                 case piece_at(board, {row, col}) do
                     nil -> {acc ++ [{row, col, nil}], :ok}
                     {^color, _} -> {acc, :stop}
                     _ -> {acc ++ [{row, col, nil}], :stop}
-                end     
+                end
             end)
         |> elem(0)
     end
@@ -199,7 +199,7 @@ defmodule Chess.Chessboard do
     def validate_moves(moves, board, {color, {_piece, _tag}}) do
         moves
         |> Enum.filter(fn {r, c, nil} -> r in 0..7 and c in 0..7 end)
-        |> Enum.map(fn {r, c, nil} -> 
+        |> Enum.map(fn {r, c, nil} ->
             case piece_at(board, {r, c}) do
                 nil -> {r, c, nil}
                 {^color, _} -> :invalid
@@ -225,13 +225,13 @@ defmodule Chess.Chessboard do
 
     def scan_checks(board, :white) do
         white_king_pos = Enum.find(board, fn {{_, _}, {:white, {:king, _}}} -> true; _ -> false end) |> elem(0)
-        
+
         is_attacked?(board, white_king_pos, :black)
     end
 
     def scan_checks(board, :black) do
         black_king_pos = Enum.find(board, fn {{_, _}, {:black, {:king, _}}} -> true; _ -> false end) |> elem(0)
-        
+
         is_attacked?(board, black_king_pos, :white)
     end
 
@@ -337,16 +337,16 @@ defmodule Chess.Chessboard do
     def update_castling_privileges(privileges, {7, 0}, {:black, {:rook, _}}), do: %{privileges | black: %{privileges.black | long: false}}
     def update_castling_privileges(privileges, {7, 7}, {:black, {:rook, _}}), do: %{privileges | black: %{privileges.black | short: false}}
     def update_castling_privileges(privileges, {7, 4}, {:black, {:king, _}}), do: %{privileges | black: %{long: false, short: false}}
-    
+
     def update_castling_privileges(privileges, _pos, _piece), do: privileges
 
     @doc """
         This function is meant to be called BEFORE a move is made. It returns a boolean indicating
         if the square where a piece wants to move is also in the list of possible moves of
         a different piece of the same color, and type.
-        
+
         ## Examples
-        
+
         Let's say we have rooks on their home squares, and both on the A file and the 1st rank thery are no other pieces.
         The moved piece is the A1 ({0, 0}) rook.
 
@@ -373,14 +373,14 @@ defmodule Chess.Chessboard do
 
         board
         |> Enum.filter(
-            fn 
+            fn
                 {{^from_rank, ^from_file}, _} -> false
                 {{_, _}, {^color, {^piece, _}}} -> true
                 _ -> false
             end
         )
         |> Enum.any?(
-            fn 
+            fn
                 {{rank, file}, {^color, {^piece, _}}}-> {to_rank, to_file, nil} in possible_moves(board, {rank, file})
             end)
     end

@@ -116,12 +116,13 @@ defmodule Chess.Games do
     query = from g in Game,
             where: is_nil(g.white_id) or is_nil(g.black_id),
             limit: 1
-    
+
     case Repo.one(query) do
-      nil -> 
+      nil ->
         atom = if Enum.random([0, 1]) == 0, do: :white_id, else: :black_id
-        create_game(%{atom => user_id, fen: Chess.FENParser.base_fen})
-      game -> fill_free_spot(game, user_id)
+        {:pending, create_game(%{atom => user_id, fen: Chess.FENParser.base_fen})}
+      game ->
+        {:ready, fill_free_spot(game, user_id)}
     end
   end
 
@@ -204,7 +205,7 @@ defmodule Chess.Games do
     Registers a move by the last move made, the fullmoves count and the game id.
     Creates a new move if white moves, and updates the last move if black moves.
   """
-  def register_move(board, last_move, fullmoves, game_id) 
+  def register_move(board, last_move, fullmoves, game_id)
     do
       last_move
       |> Map.put(:move_number, fullmoves)
@@ -288,13 +289,13 @@ defmodule Chess.Games do
     def encode_move(%{piece: :pawn, capture: nil, to: {to_rank, to_file, _}}), do: encode_position({to_rank, to_file})
     def encode_move(%{piece: :pawn, from: {_, from_file, _}, to: {to_rank, to_file, _}}), do: "#{<<?a + from_file>>}x" <> encode_position({to_rank, to_file})
     def encode_move(%{piece: piece, capture: capture, twin: false, to: {to_rank, to_file, _}}) do
-      "#{FENParser.reverse_pieces(:white)[{:white, piece}]}" 
-      <> (if capture, do: "x", else: "") 
+      "#{FENParser.reverse_pieces(:white)[{:white, piece}]}"
+      <> (if capture, do: "x", else: "")
       <> encode_position({to_rank, to_file})
     end
     def encode_move(%{piece: piece, capture: capture, twin: true, from: {_, from_file, _}, to: {to_rank, to_file, _}}) do
       "#{FENParser.reverse_pieces(:white)[{:white, piece}]}#{<<?a + from_file>>}"
-      <> (if capture, do: "x", else: "") 
+      <> (if capture, do: "x", else: "")
       <> encode_position({to_rank, to_file})
     end
 

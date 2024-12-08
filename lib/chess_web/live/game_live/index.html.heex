@@ -32,6 +32,13 @@
   </:action>
 </.table>
 
+<.modal :if={@waiting} id="waiting-modal" show on_cancel={
+  JS.push("cancel_waiting")
+  |> JS.patch(~p"/games")
+}>
+  <h3>Waiting for opponent...</h3>
+</.modal>
+
 <.modal :if={@live_action in [:edit]} id="game-modal" show on_cancel={JS.patch(~p"/games")}>
   <.live_component
     module={ChessWeb.GameLive.FormComponent}

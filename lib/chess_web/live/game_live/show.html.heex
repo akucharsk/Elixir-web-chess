@@ -41,10 +41,6 @@
   />
 </.modal> --%>
 
-<.modal :if={@pending} id="pending-game-modal" show on_cancel={JS.push("exit_pending_game")}>
-  Waiting for players
-</.modal>
-
 <.modal :if={@resign and not @game_over} id="resign-modal" show on_cancel={JS.patch(~p"/games/#{@game.id}")}>
   <h3>Are you sure you want to resign?</h3>
   <.button phx-click="resign">Resign</.button>

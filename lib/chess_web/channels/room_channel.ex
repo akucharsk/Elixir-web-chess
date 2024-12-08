@@ -1,6 +1,6 @@
 defmodule ChessWeb.RoomChannel do
   use ChessWeb, :channel
-  
+
   alias ChessWeb.Presence
 
   @impl true
@@ -42,7 +42,7 @@ defmodule ChessWeb.RoomChannel do
   end
 
   def handle_in("enter_game", _payload, socket) do
-    send self, :enter_game
+    send self(), :enter_game
     {:noreply, socket}
   end
 
@@ -70,7 +70,7 @@ defmodule ChessWeb.RoomChannel do
     Presence.track(socket, socket.assigns.game_id, %{
       game_id: game_id,
     })
-    
+
     {:noreply, socket}
   end
 
