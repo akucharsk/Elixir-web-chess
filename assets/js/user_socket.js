@@ -64,19 +64,6 @@ function positionPromotionArea(to) {
   console.log("Promotion area", promotionArea.style.top, promotionArea.style.left)
 }
 
-function joinChannel(channelName, params) {
-  let channel = socket.channel(channelName, params)
-  channel.join()
-    .receive("ok", resp => { console.log("Joined successfully", resp) })
-    .receive("error", resp => { console.log("Unable to join", resp) })
-  channel.on("terminate", payload => {
-    console.log("Terminated", payload)
-    channel.leave()
-    channels.delete(channel)
-  })
-  return channel
-}
-
 highlighted_squares = []
 
 function removeHighlights() {
@@ -111,6 +98,19 @@ function createMoveGroup(move_code, id) {
   group.appendChild(black_move)
 
   document.getElementById("recorder").appendChild(group)
+}
+
+function joinChannel(channelName, params) {
+  let channel = socket.channel(channelName, params)
+  channel.join()
+    .receive("ok", resp => { console.log("Joined successfully", resp) })
+    .receive("error", resp => { console.log("Unable to join", resp) })
+  channel.on("terminate", payload => {
+    console.log("Terminated", payload)
+    channel.leave()
+    channels.delete(channel)
+  })
+  return channel
 }
 
 function joinGameChannel(channelName, params) {
@@ -155,7 +155,6 @@ channels.set("room:lobby", socket.channel("room:lobby", {name: window.location.s
 
 channels.get("room:lobby").on("new_game", payload => {
   // payload = {game_id, pending}
-
   channels.set(`room:${payload.game_id}`, joinGameChannel(`room:${payload.game_id}`, {}))
   chan = channels.get(`room:${payload.game_id}`)
   chan.on("enter_game", payload => {

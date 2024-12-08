@@ -78,6 +78,14 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
+  @impl true
+  def handle_info(%{event: "ready_game", payload: %{game_id: game_id, white_id: white_id, black_id: black_id}}, socket) do
+    if socket.assigns.current_user_id in [white_id, black_id] do
+      push(socket, "new_game", %{game_id: game_id})
+    end
+    {:noreply, socket}
+  end
+
   def handle_info(%{event: "square:click", payload: %{moves: moves, user_id: user_id}}, socket) do
     if socket.assigns.current_user_id == user_id do
       push(socket, "square:click", %{moves: moves})

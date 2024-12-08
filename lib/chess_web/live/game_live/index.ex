@@ -11,6 +11,7 @@ defmodule ChessWeb.GameLive.Index do
   def mount(_params, session, socket) do
     user = Accounts.get_user_by_session_token(session["user_token"])
     Endpoint.subscribe("room:lobby")
+    Phoenix.PubSub.subscribe(Chess.PubSub, "room:lobby")
     {:ok,
       socket
       |> assign(:current_user, user)
@@ -29,26 +30,6 @@ defmodule ChessWeb.GameLive.Index do
     |> assign(:games, Games.get_game!(id))
   end
 
-  defp apply_action(socket, :new, _params) do
-    socket
-    |> assign(:page_title, "New Game")
-
-    case Games.fetch_ready_game(socket.assigns.current_user.id) do
-      {:ready, {:ok, game}} ->
-        ChessWeb.Endpoint.broadcast_from!(self(), "room:lobby", "new_game", %{game_id: game.id})
-        socket
-        |> assign(:game, game)
-        |> push_navigate(to: ~p"/games/#{game.id}")
-      {:pending, {:ok, game}} ->
-        socket
-        |> assign(:game, game)
-        |> assign(:waiting, true)
-      {_, {:error, reason}} ->
-        socket
-        |> put_flash(:error, "Unable to create or join a game. Reason: #{reason}")
-    end
-  end
-
   defp apply_action(socket, :index, _params) do
     socket
     |> assign(:page_title, "Listing Games")
@@ -60,6 +41,19 @@ defmodule ChessWeb.GameLive.Index do
     {:noreply, stream_insert(socket, :games, game)}
   end
 
+  @impl true
+  def handle_info(%{event: "ready_game", payload: %{game_id: game_id}}, socket) do
+    if game_id == socket.assigns.game.id and socket.assigns.waiting do
+      {:noreply,
+        socket
+        |> assign(:waiting, false)
+        |> push_navigate(to: ~p"/games/#{game_id}")}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
   def handle_info(_msg, socket) do
     {:noreply, socket}
   end
@@ -82,6 +76,29 @@ defmodule ChessWeb.GameLive.Index do
     {:noreply,
     assign(socket, :waiting, false)
     |> assign(:game, nil)}
+  end
+
+  @impl true
+  def handle_event("new_game", %{}, socket) do
+    socket =
+    case Games.fetch_ready_game(socket.assigns.current_user.id) do
+      {:ready, {:ok, game}} ->
+        Phoenix.PubSub.broadcast!(Chess.PubSub, "room:lobby",
+          %{event: "ready_game", payload: %{game_id: game.id, white_id: game.white_id, black_id: game.black_id}}
+        )
+        socket
+        |> assign(:game, game)
+        |> push_navigate(to: ~p"/games/#{game.id}")
+      {:pending, {:ok, game}} ->
+        socket
+        |> assign(:game, game)
+        |> assign(:waiting, true)
+      {_, {:error, reason}} ->
+        socket
+        |> put_flash(:error, "Unable to create or join a game. Reason: #{reason}")
+    end
+
+    {:noreply, socket}
   end
 
 end
