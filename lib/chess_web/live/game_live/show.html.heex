@@ -40,7 +40,6 @@
     patch={~p"/games/#{@game}"}
   />
 </.modal> --%>
-
 <.modal :if={@resign and not @game_over} id="resign-modal" show on_cancel={JS.patch(~p"/games/#{@game.id}")}>
   <h3>Are you sure you want to resign?</h3>
   <.button phx-click="resign">Resign</.button>
@@ -51,9 +50,9 @@
   <h3>Game Over</h3>
   <h4>
   <%= cond do %>
-    <%= @winner == nil -> %> It's a draw!
-    <%= @winner == @current_user -> %> You win!
-    <%= true -> %> You lose!
+    <% @winner == nil -> %> It's a draw!
+    <% @winner == @current_user -> %> You win!
+    <% true -> %> You lose!
   <% end %>
   </h4>
   <:actions>
@@ -71,7 +70,8 @@
   id={@game.id}
   game={@game}
   action={@live_action}
-  player={@current_player}
+  player_color={@current_player_color}
+  opponent_color={if @current_player_color == :white, do: :black, else: :white}
   arangement={@arangement}
   board={@board}
   user={@current_user}
@@ -80,4 +80,3 @@
 
 <.button phx-click="resign">Resign</.button>
 <.button phx-click="draw">Offer Draw</.button>
-

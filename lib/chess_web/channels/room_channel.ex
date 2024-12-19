@@ -2,6 +2,7 @@ defmodule ChessWeb.RoomChannel do
   use ChessWeb, :channel
 
   alias ChessWeb.Presence
+  require Logger
 
   @impl true
   def join("room:lobby", %{"name" => name} = payload, socket) do
@@ -11,10 +12,12 @@ defmodule ChessWeb.RoomChannel do
     |> authorize_socket(payload)
   end
 
+  @impl true
   def join("room:lobby", payload, socket) do
     authorize_socket socket, payload
   end
 
+  @impl true
   def join("room:" <> game_id, payload, socket) do
     send self(), {:after_join, game_id}
     socket
@@ -75,15 +78,19 @@ defmodule ChessWeb.RoomChannel do
   end
 
   def handle_info(:enter_game, socket) do
+    :ok = Phoenix.PubSub.broadcast(Chess.PubSub, "room:#{socket.assigns.game_id}",
+      %{event: "game_loaded", payload: %{game_id: socket.assigns.game_id}}
+    )
+
     {:noreply, socket}
   end
 
   @impl true
-  def handle_info(%{event: "ready_game", payload: %{game_id: game_id, white_id: white_id, black_id: black_id}}, socket) do
+  def handle_info(%{event: "ready_game", payload: %{game_id: game_id, white_id: white_id, black_id: black_id} = payload}, socket) do
     if socket.assigns.current_user_id in [white_id, black_id] do
       push(socket, "new_game", %{game_id: game_id})
     end
-    {:noreply, socket}
+    {:noreply, assign(socket, Map.to_list(payload))}
   end
 
   def handle_info(%{event: "square:click", payload: %{moves: moves, user_id: user_id}}, socket) do
@@ -95,8 +102,9 @@ defmodule ChessWeb.RoomChannel do
 
   def handle_info(%{event: "piece:move", payload: %{"from" => from, "to" => to, "user_id" => user_id, "promotion" => promo}}, socket) do
     if socket.assigns.current_user_id == user_id do
-      broadcast!(socket, "piece_move", %{from: from, to: to, user_id: user_id, promotion: promo})
+      broadcast!(socket, "lv:piece_move", %{from: from, to: to, user_id: user_id, promotion: promo})
     end
+
     {:noreply, socket}
   end
 

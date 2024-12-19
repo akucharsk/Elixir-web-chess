@@ -3,6 +3,7 @@
 
 // Bring in Phoenix channels client library:
 import {Socket, Presence} from "phoenix"
+import {Timer} from "./timer"
 
 // And connect to the path in "lib/chess_web/endpoint.ex". We pass the
 // token for authentication. Read below how it should be used.
@@ -53,99 +54,107 @@ let socket = new Socket("/socket", {params: {token: window.userToken}})
 // Finally, connect to the socket:
 socket.connect()
 
-function positionPromotionArea(to) {
-  let promotionArea = document.getElementById("promotion-pieces")
-  let promotionSquare = document.getElementById(`${to[0]}_${to[1]}`)
-  var rect = promotionSquare.getBoundingClientRect()
+// function positionPromotionArea(to) {
+//   let promotionArea = document.getElementById("promotion-pieces")
+//   let promotionSquare = document.getElementById(`${to[0]}_${to[1]}`)
+//   var rect = promotionSquare.getBoundingClientRect()
   
-  promotionArea.style.top = `${rect.top + rect.height}px`
-  promotionArea.style.left = `${rect.left - rect.width}px`
-  promotionArea.style.display = "block"
-  console.log("Promotion area", promotionArea.style.top, promotionArea.style.left)
-}
+//   promotionArea.style.top = `${rect.top + rect.height}px`
+//   promotionArea.style.left = `${rect.left - rect.width}px`
+//   promotionArea.style.display = "block"
+//   console.log("Promotion area", promotionArea.style.top, promotionArea.style.left)
+// }
 
-highlighted_squares = []
+// highlighted_squares = []
 
-function removeHighlights() {
-  for (let sq of highlighted_squares) {
-    el = document.getElementById(`${sq}`)
-    el.classList.remove("highlight")
-  }
-  highlighted_squares.length = 0
-}
+// function removeHighlights() {
+//   for (let sq of highlighted_squares) {
+//     el = document.getElementById(`${sq}`)
+//     el.classList.remove("highlight")
+//   }
+//   highlighted_squares.length = 0
+// }
 
-function createMoveGroup(move_code, id) {
-  let group = document.createElement("tr")
-  group.classList.add("move-group")
-  group.id = `move-group-${id}`
+// function createMoveGroup(move_code, id) {
+//   let group = document.createElement("tr")
+//   group.classList.add("move-group")
+//   group.id = `move-group-${id}`
 
-  let move_num = document.createElement("td")
-  move_num.classList.add("move")
-  move_num.id = `move-${id}-num`
-  move_num.textContent = id
+//   let move_num = document.createElement("td")
+//   move_num.classList.add("move")
+//   move_num.id = `move-${id}-num`
+//   move_num.textContent = id
 
-  let white_move = document.createElement("td")
-  white_move.classList.add("move")
-  white_move.id = `move-${id}-white`
-  white_move.textContent = move_code
+//   let white_move = document.createElement("td")
+//   white_move.classList.add("move")
+//   white_move.id = `move-${id}-white`
+//   white_move.textContent = move_code
 
-  let black_move = document.createElement("td")
-  black_move.classList.add("move")
-  black_move.id = `move-${id}-black`
+//   let black_move = document.createElement("td")
+//   black_move.classList.add("move")
+//   black_move.id = `move-${id}-black`
 
-  group.appendChild(move_num)
-  group.appendChild(white_move)
-  group.appendChild(black_move)
+//   group.appendChild(move_num)
+//   group.appendChild(white_move)
+//   group.appendChild(black_move)
 
-  document.getElementById("recorder").appendChild(group)
-}
+//   document.getElementById("recorder").appendChild(group)
+// }
 
-function joinChannel(channelName, params) {
-  let channel = socket.channel(channelName, params)
-  channel.join()
-    .receive("ok", resp => { console.log("Joined successfully", resp) })
-    .receive("error", resp => { console.log("Unable to join", resp) })
-  channel.on("terminate", payload => {
-    console.log("Terminated", payload)
-    channel.leave()
-    channels.delete(channel)
-  })
-  return channel
-}
+// function joinChannel(channelName, params) {
+//   let channel = socket.channel(channelName, params)
+//   const gameID = parseInt(channelName.split(":")[1])
+//   channel.join()
+//     .receive("ok", resp => { 
+//       console.log("Joined successfully", resp)
+//       channel.push("enter_game", {game_id: gameID})
+//     })
+//     .receive("error", resp => { console.log("Unable to join", resp) })
+//   channel.on("terminate", payload => {
+//     console.log("Terminated", payload)
+//     channel.leave()
+//     channels.delete(channel)
+//   })
+//   return channel
+// }
 
-function joinGameChannel(channelName, params) {
-  chan = joinChannel(channelName, params)
+// function joinGameChannel(channelName, params) {
+//   chan = joinChannel(channelName, params)
 
-  chan.on("square:click", event => {
-    let moves = event.moves
-    removeHighlights()
-    for (let move of moves) {
-      square = document.getElementById(`${move[0]}_${move[1]}`).classList.add("highlight")
-      highlighted_squares.push(`${move[0]}_${move[1]}`)
-    }
-  })
+//   chan.on("game_loaded", payload => {
+//     console.log("Game loaded", location.pathname, payload)
+//   })
 
-  chan.on("piece:move", event => {
-    removeHighlights()
-    chan.push("piece:move", event)
-  })
+//   chan.on("square:click", event => {
+//     let moves = event.moves
+//     removeHighlights()
+//     for (let move of moves) {
+//       square = document.getElementById(`${move[0]}_${move[1]}`).classList.add("highlight")
+//       highlighted_squares.push(`${move[0]}_${move[1]}`)
+//     }
+//   })
 
-  chan.on("piece:promotion", event => {
-    removeHighlights()
-    highlighted_squares.push(`${event.to[0]}_${event.to[1]}`)
-    positionPromotionArea(event.to)
-  })
+//   chan.on("piece:move", event => {
+//     removeHighlights()
+//     chan.push("piece:move", event)
+//   })
 
-  chan.on("move:register", event => {
-    console.log("Move register", event)
-    if (event.color === "white") {
-      createMoveGroup(event.move_code, event.move_count)
-    } else {
-      document.getElementById(`move-${event.move_count}-black`).textContent = event.move_code
-    }
-  })
-  return chan
-}
+//   chan.on("piece:promotion", event => {
+//     removeHighlights()
+//     highlighted_squares.push(`${event.to[0]}_${event.to[1]}`)
+//     positionPromotionArea(event.to)
+//   })
+
+//   chan.on("move:register", event => {
+//     console.log("Move register", event)
+//     if (event.color === "white") {
+//       createMoveGroup(event.move_code, event.move_count)
+//     } else {
+//       document.getElementById(`move-${event.move_count}-black`).textContent = event.move_code
+//     }
+//   })
+//   return chan
+// }
 
 // Now that you are connected, you can join channels with a topic.
 // Let's assume you have a channel with a topic named `room` and the
@@ -153,31 +162,19 @@ function joinGameChannel(channelName, params) {
 let channels = new Map()
 channels.set("room:lobby", socket.channel("room:lobby", {name: window.location.search.split("=")[1]}))
 
-channels.get("room:lobby").on("new_game", payload => {
-  // payload = {game_id, pending}
-  channels.set(`room:${payload.game_id}`, joinGameChannel(`room:${payload.game_id}`, {}))
-  chan = channels.get(`room:${payload.game_id}`)
-  chan.on("enter_game", payload => {
-    console.log("Enter game", payload)
-    chan.push("enter_game", payload)
-})})
+// channels.get("room:lobby").on("new_game", payload => {
+//   // payload = {game_id, pending}
+//   channels.set(`room:${payload.game_id}`, joinGameChannel(`room:${payload.game_id}`, {}))
+//   chan = channels.get(`room:${payload.game_id}`)
+//   chan.on("enter_game", payload => {
+//     console.log("Enter game", payload)
+//     chan.push("enter_game", payload)})
+
+// })
 
 channels.get("room:lobby").join()
   .receive("ok", resp => { console.log("Joined successfully", resp) })
   .receive("error", resp => { console.log("Unable to join", resp) })
 
-path = window.location.pathname.split("/")
-res = parseInt(path[path.length - 1])
-
-if (!isNaN(res) && path.length === 3 && path[0] === "" && path[1] === "games") {
-  channels.set(`room:${res}`, joinGameChannel(`room:${res}`, {}))
-  chan = channels.get(`room:${res}`)
-  chan.on("enter_game", payload => {
-    console.log("Enter game", payload)
-    chan.push("enter_game", payload)
-  })
-}
-
-window.addEventListener("click", _event => {removeHighlights()})
-
 export default socket
+export {socket}

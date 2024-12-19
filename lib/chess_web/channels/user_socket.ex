@@ -30,7 +30,7 @@ defmodule ChessWeb.UserSocket do
     case Phoenix.Token.verify(socket, "user socket", token, max_age: max_age) do
       {:ok, user_id} ->
         {:ok, assign(socket, :current_user_id, user_id)}
-      {:error, reason} ->
+      {:error, _reason} ->
         :error
     end
   end

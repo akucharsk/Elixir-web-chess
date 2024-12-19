@@ -10,8 +10,10 @@ defmodule Chess.Application do
     children = [
       ChessWeb.Telemetry,
       Chess.Repo,
+      Chess.GameSupervisor,
       {DNSCluster, query: Application.get_env(:chess, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Chess.PubSub},
+      {Registry, keys: :unique, name: Chess.Registry},
       # Start the Finch HTTP client for sending emails
       {Finch, name: Chess.Finch},
       # Start a worker by calling: Chess.Worker.start_link(arg)

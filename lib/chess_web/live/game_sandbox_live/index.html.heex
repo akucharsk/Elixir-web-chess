@@ -1,12 +1,11 @@
 <.header>
 
+    <div id="sandbox" phx-hook="Sandbox">
     Game Sandbox Live
+    </div>
     <:actions>
 
     </:actions>
     <.back navigate={~p"/games"}>Back to games</.back>
 
 </.header>
-
-<.live_component
-    module={ChessWeb.ChessboardComponent} />
