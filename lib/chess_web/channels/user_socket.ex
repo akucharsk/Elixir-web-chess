@@ -9,6 +9,7 @@ defmodule ChessWeb.UserSocket do
   ## Channels
 
   channel "room:*", ChessWeb.RoomChannel
+  channel "timer:*", ChessWeb.TimerChannel
 
   # Socket params are passed from the client and can
   # be used to verify and authenticate a user. After

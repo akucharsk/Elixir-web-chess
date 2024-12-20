@@ -2,6 +2,7 @@ defmodule ChessWeb.RoomChannel do
   use ChessWeb, :channel
 
   alias ChessWeb.Presence
+  alias Chess.Timer
   require Logger
 
   @impl true
@@ -21,8 +22,18 @@ defmodule ChessWeb.RoomChannel do
   def join("room:" <> game_id, payload, socket) do
     send self(), {:after_join, game_id}
     socket
-    |> assign(:game_id, game_id)
+    |> assign(:game_id, String.to_integer(game_id))
     |> authorize_socket(payload)
+  end
+
+  @impl true
+  def join("timer:" <> game_id, payload, socket) do
+    game_id = String.to_integer(game_id)
+    if game_id != socket.assigns.game_id do
+      {:error, %{reason: "unauthorized"}}
+    else
+      authorize_socket(socket, payload)
+    end
   end
 
   # Channels can be used in a request/response fashion
@@ -63,6 +74,13 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
+  @impl true
+  def handle_in("timer:tick", _payload, socket) do
+    times = Timer.get_times(socket.assigns.game_id)
+    push(socket, "timer:tick", %{white_time: times.white_time, black_time: times.black_time})
+    {:noreply, socket}
+  end
+
   def handle_in(event, _payload, socket) do
     IO.warn("Unhandled event: #{event}")
     {:noreply, socket}
@@ -79,7 +97,7 @@ defmodule ChessWeb.RoomChannel do
 
   def handle_info(:enter_game, socket) do
     :ok = Phoenix.PubSub.broadcast(Chess.PubSub, "room:#{socket.assigns.game_id}",
-      %{event: "game_loaded", payload: %{game_id: socket.assigns.game_id}}
+      %{event: "lv:game_loaded", payload: %{game_id: socket.assigns.game_id}}
     )
 
     {:noreply, socket}

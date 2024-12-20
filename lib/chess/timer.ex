@@ -22,6 +22,10 @@ defmodule Chess.Timer do
     {:ok, state}
   end
 
+  defp send_updates() do
+    Process.send_after(self(), :tick, 5000)
+  end
+
   # Public API
   def confirm(color, game_id) when color in [:white, :black] do
     GenServer.cast(via_tuple(game_id), {:confirm, color})
@@ -45,6 +49,7 @@ defmodule Chess.Timer do
     confirmation = %{confirmation | color => true}
     state = %{state | confirmation: confirmation}
     if Enum.all?(confirmation, fn {_color, confirmed} -> confirmed end) do
+      send_updates()
       {:noreply, %{state | last_time: DateTime.utc_now()}}
     else
       {:noreply, state}
@@ -64,6 +69,18 @@ defmodule Chess.Timer do
   def handle_call(:get_times, _from, state) do
     state = subtract_times(state)
     {:reply, %{white_time: state.white_time, black_time: state.black_time}, state}
+  end
+
+  @impl true
+  def handle_info(:tick, state) do
+    state = subtract_times(state)
+
+    Phoenix.PubSub.broadcast(Chess.PubSub, "timer:#{state.game_id}",
+      %{white_time: state.white_time, black_time: state.black_time}
+    )
+
+    send_updates()
+    {:noreply, state}
   end
 
   defp subtract_times(%{last_time: last_time} = state) do

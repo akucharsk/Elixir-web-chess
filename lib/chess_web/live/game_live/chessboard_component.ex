@@ -4,9 +4,16 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
     alias Chess.Chessboard
 
     @impl true
+    @spec render(any()) :: Phoenix.LiveView.Rendered.t()
     def render(assigns) do
         ~H"""
         <div id="game-render-frame" phx-hook="Game">
+
+        <div id="timers" style="float: left; display: flex; flex-direction: column; align-items: flex-start;">
+            <div id={timer_id(@opponent_color)} class="timer"></div>
+            <div id={timer_id(@player_color)} class="timer"></div>
+        </div>
+
             <div id="chessboard-border">
                 <div> <%= @arangement |> elem(1) %> </div>
                 <.promotion_pieces promotion={@promotion} color={@player_color} />
@@ -37,14 +44,12 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
                 </div>
                 <div> <%= @arangement |> elem(0) %> </div>
             </div>
-            <div id={timer_id(@opponent_color)}>00:10:00</div>
             <div id="move-register">
                 <.live_component
                 module={ChessWeb.GameLive.MoveRegisterComponent}
                 id={@user.id}
                 />
             </div>
-            <div id={timer_id(@player_color)}>00:10:00</div>
         </div>
         """
       end

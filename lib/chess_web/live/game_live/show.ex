@@ -97,7 +97,8 @@ defmodule ChessWeb.GameLive.Show do
   def handle_event("exit_pending_game", _params, socket) do
     if socket.assigns.pending do
       game = socket.assigns.game
-      Endpoint.broadcast_from!(self(), "room:#{game.id}", "terminate", %{game_id: game.id})
+      Endpoint.broadcast("room:#{game.id}", "terminate", %{game_id: game.id})
+      Endpoint.broadcast("timer:#{game.id}", "terminate", %{game_id: game.id})
 
       {:ok, _} = Games.delete_game(game)
 
@@ -175,7 +176,6 @@ defmodule ChessWeb.GameLive.Show do
 
   # Handle event sent by the channel. Finalize the move on the board
   def handle_info(%Broadcast{event: "lv:piece_move", payload: %{from: from, to: to, user_id: user_id, promotion: promo}}, socket) do
-    Logger.info("Piece move from #{inspect(from)} to #{inspect(to)}, user id: #{socket.assigns.current_user.id}")
     from = from ++ [nil] |> List.to_tuple
     to = to |> List.to_tuple
 
@@ -223,7 +223,7 @@ defmodule ChessWeb.GameLive.Show do
       |> assign(:winner, Games.opponent(socket.assigns.game, user_id))}
   end
 
-  def handle_info(%{event: "game_loaded", payload: %{game_id: game_id}}, socket) do
+  def handle_info(%{event: "lv:game_loaded", payload: %{game_id: game_id}}, socket) do
     if game_id == socket.assigns.game.id do
       Logger.info("Game loaded")
       :ok = Endpoint.broadcast("room:#{game_id}", "game_loaded", %{game_id: game_id})

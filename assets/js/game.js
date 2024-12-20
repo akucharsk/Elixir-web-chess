@@ -1,6 +1,9 @@
 import {Socket} from "phoenix"
 import {Timer} from "./timer"
 
+var timer;
+var syncInterval;
+
 function positionPromotionArea(to) {
     let promotionArea = document.getElementById("promotion-pieces")
     let promotionSquare = document.getElementById(`${to[0]}_${to[1]}`)
@@ -50,12 +53,9 @@ function createMoveGroup(move_code, id) {
 
 function joinChannel(socket, channelName, params) {
     let channel = socket.channel(channelName, params)
-    const gameID = parseInt(channelName.split(":")[1])
-    console.log("Joining channel", channelName, gameID)
     channel.join()
       .receive("ok", resp => { 
         console.log("Joined successfully", resp)
-        channel.push("enter_game", {game_id: gameID})
       })
       .receive("error", resp => { console.log("Unable to join", resp) })
     channel.on("terminate", payload => {
@@ -83,7 +83,8 @@ function joinGameChannel(socket, channelName, params) {
     })
   
     chan.on("piece:move", event => {
-      removeHighlights()
+      removeHighlights();
+      timer.switchTimer();
       chan.push("piece:move", event)
     })
   
@@ -101,6 +102,10 @@ function joinGameChannel(socket, channelName, params) {
         document.getElementById(`move-${event.move_count}-black`).textContent = event.move_code
       }
     })
+
+    chan.on("timer:tick", event => {
+      console.log("Timer tick", event)
+    })
     return chan
 }
 
@@ -111,19 +116,37 @@ GameHooks = {
       console.log(window.location.pathname);
       socket.connect();
 
+      const channelName = `room:${gameID}`;
+      const channel = joinGameChannel(socket, channelName, {});
+      const timerChannel = joinChannel(socket, `timer:${gameID}`, {});
+
       const whiteTimer = document.getElementById("white-timer");
       const blackTimer = document.getElementById("black-timer");
 
-      const timer = new Timer(whiteTimer, blackTimer);
+      window.addEventListener("white:timeout", () => {channel.push("timer:timeout", {game_id: gameID, color: "white"})});
+      window.addEventListener("black:timeout", () => {channel.push("timer:timeout", {game_id: gameID, color: "black"})});
 
-      const channelName = `room:${gameID}`;
-      const channel = joinGameChannel(socket, channelName, {});
-      
+      timer = new Timer(whiteTimer, blackTimer);
+
+      timerChannel.on("timer:synchronize", payload => {
+        console.log(payload.white_time)
+      })
+
       timer.startTimer();
     },
 
     updated() {
       console.log("Script updated");
+    },
+
+    destroyed() {
+      timer.clearInterval();
+      clearInterval(syncInterval);
+    },
+
+    disconnected() {
+      timer.clearInterval();
+      clearInterval(syncInterval);
     }
 }
 
