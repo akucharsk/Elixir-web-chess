@@ -2,7 +2,6 @@ defmodule ChessWeb.RoomChannel do
   use ChessWeb, :channel
 
   alias ChessWeb.Presence
-  alias Chess.Timer
   require Logger
 
   @impl true
@@ -24,16 +23,6 @@ defmodule ChessWeb.RoomChannel do
     socket
     |> assign(:game_id, String.to_integer(game_id))
     |> authorize_socket(payload)
-  end
-
-  @impl true
-  def join("timer:" <> game_id, payload, socket) do
-    game_id = String.to_integer(game_id)
-    if game_id != socket.assigns.game_id do
-      {:error, %{reason: "unauthorized"}}
-    else
-      authorize_socket(socket, payload)
-    end
   end
 
   # Channels can be used in a request/response fashion
@@ -74,10 +63,10 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
-  @impl true
-  def handle_in("timer:tick", _payload, socket) do
-    times = Timer.get_times(socket.assigns.game_id)
-    push(socket, "timer:tick", %{white_time: times.white_time, black_time: times.black_time})
+  def handle_in("timer:timeout", %{color: color}, socket) do
+    Phoenix.PubSub.broadcast(Chess.PubSub, "room:#{socket.assigns.game_id}",
+      %{event: "lv:timer:timeout", payload: %{color: String.to_atom(color)}}
+    )
     {:noreply, socket}
   end
 

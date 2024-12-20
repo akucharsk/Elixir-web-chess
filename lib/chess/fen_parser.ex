@@ -10,8 +10,8 @@ defmodule Chess.FENParser do
                     "N" => {:white, {:knight, "white-knight"}},
                     "P" => {:white, {:pawn, "white-pawn"}}}
     @white_pieces_reverse for {key, {color, {piece, _}}} <- @white_pieces, into: %{}, do: {{color, piece}, key}
-    
-    @black_pieces Map.new(@white_pieces, 
+
+    @black_pieces Map.new(@white_pieces,
                     fn {key, {_, {piece, "white-" <> name}}} -> {String.downcase(key), {:black, {piece, "black-" <> name}}} end)
     @black_pieces_reverse for {key, {color, {piece, _}}} <- @black_pieces, into: %{}, do: {{color, piece}, key}
 
@@ -33,7 +33,7 @@ defmodule Chess.FENParser do
         case String.split(fen, " ") do
         [board, turn, castling_rights, en_passant, halfmove_clock, fullmove_number] ->
 
-            game_data = 
+            game_data =
             %{}
             |> register_board(board)
             |> register_turn(turn)
@@ -49,7 +49,7 @@ defmodule Chess.FENParser do
         params -> {:error, "Invalid FEN string! Not enough parameters, expected 6, got #{length(params)}"}
         end
     end
-    
+
     def game_from_fen!(fen) do
         case game_from_fen(fen) do
             {:ok, game} -> game
@@ -63,9 +63,9 @@ defmodule Chess.FENParser do
         |> String.split("/")
         |> Enum.with_index
         |> Enum.map(fn {rank, idx} -> {rank, 7 - idx} end)
-        |> Enum.reduce({:ok, []}, 
-            fn 
-                {fen_code, rank}, {:ok, acc} -> 
+        |> Enum.reduce({:ok, []},
+            fn
+                {fen_code, rank}, {:ok, acc} ->
                     case parse_rank({fen_code, rank}) do
                         {:ok, parsed} -> {:ok, [parsed | acc]}
                         {:error, reason} -> {:error, reason}
@@ -89,7 +89,7 @@ defmodule Chess.FENParser do
             {:error, reason} -> {:error, "Invalid FEN code: #{reason}"}
         end
     end
-    
+
     defp parse_fen_code(_char, {:error, reason}), do: {:error, reason}
     defp parse_fen_code(_char, {rank, _file, _acc}) when rank > 7, do: {:error, "Invalid FEN code: rank #{rank} is out of bounds"}
     defp parse_fen_code(_char, {rank, file, _acc}) when file > 7, do: {:error, "Invalid FEN code: rank #{rank} with too many files"}
@@ -129,7 +129,7 @@ defmodule Chess.FENParser do
                 "k", {:ok, map} -> {:ok, %{map | black: %{map.black | short: true}}}
                 "q", {:ok, map} -> {:ok, %{map | black: %{map.black | long: true}}}
                 char, {:ok, _map} -> {:error, "Invalid FEN code: no such castling right: #{char}"}
-                _, {:error, reason} -> {:error, reason} 
+                _, {:error, reason} -> {:error, reason}
             end)
         |> case do
             {:ok, map} -> {:ok, Map.put(game_data, :castling_privileges, map)}
@@ -168,7 +168,6 @@ defmodule Chess.FENParser do
             {:error, "Invalid FEN code: Impossible to execute en-passant on square #{en_passant}"}
         end
     end
-    defp register_en_passant({:ok, _game_data}, en_passant), do: {:error, "Invalid FEN code: Impossible to execute en-passant on square #{en_passant}"}
     defp register_en_passant({:error, reason}, _), do: {:error, reason}
 
     # Halfmove clock registration
@@ -231,11 +230,11 @@ defmodule Chess.FENParser do
 
     defp turn_to_fen(:white), do: "w"
     defp turn_to_fen(:black), do: "b"
-    defp turn_to_fen(_), do: raise ArgumentError, "Invalid turn"
-
+    defp turn_to_fen(_), do: (raise ArgumentError, "Invalid turn"
+)
     defp castling_rights_to_fen(%{white: %{long: white_long, short: white_short}, black: %{long: black_long, short: black_short}}) do
         ["q", "k", "Q", "K"]
-        |> Enum.reduce([], 
+        |> Enum.reduce([],
             fn
                 "K", acc -> if white_short, do: ["K" | acc], else: acc
                 "Q", acc -> if white_long, do: ["Q" | acc], else: acc
@@ -248,9 +247,9 @@ defmodule Chess.FENParser do
             str -> str
         end
     end
-    defp castling_rights_to_fen(_), do: raise ArgumentError, "Invalid castling rights"
-    
+    defp castling_rights_to_fen(_), do: (raise ArgumentError, "Invalid castling rights")
+
     defp en_passant_to_fen({rank, file}), do: "#{<<?a + file>>}#{rank}"
     defp en_passant_to_fen(nil), do: "-"
-    defp en_passant_to_fen(_), do: raise ArgumentError, "Invalid en passant"
+    defp en_passant_to_fen(_), do: (raise ArgumentError, "Invalid en passant")
 end

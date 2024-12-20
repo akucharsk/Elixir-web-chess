@@ -2,10 +2,10 @@ import Config
 
 # Configure your database
 config :chess, Chess.Repo,
-  username: "POSTGRES_USER" |> System.get_env,
-  password: "POSTGRES_PASSWORD" |> System.get_env,
-  hostname: "localhost",
-  database: "CHESS_DATABASE" |> System.get_env,
+  username: System.get_env("POSTGRES_USER", "postgres"),
+  password: System.get_env("POSTGRES_PASSWORD", "postgres"),
+  hostname: System.get_env("CHESS_HOST", "localhost"),
+  database: System.get_env("CHESS_DATABASE", "chess_dev"),
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
@@ -23,7 +23,7 @@ config :chess, ChessWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "CHESS_SECRET_KEY" |> System.get_env,
+  secret_key_base: System.get_env("CHESS_SECRET_KEY"),
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:chess, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:chess, ~w(--watch)]}

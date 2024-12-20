@@ -13,7 +13,7 @@ function positionPromotionArea(to) {
     promotionArea.style.left = `${rect.left - rect.width}px`
     promotionArea.style.display = "block"
     console.log("Promotion area", promotionArea.style.top, promotionArea.style.left)
-  }
+}
   
 highlighted_squares = []
 
@@ -95,16 +95,11 @@ function joinGameChannel(socket, channelName, params) {
     })
   
     chan.on("move:register", event => {
-      console.log("Move register", event)
       if (event.color === "white") {
         createMoveGroup(event.move_code, event.move_count)
       } else {
         document.getElementById(`move-${event.move_count}-black`).textContent = event.move_code
       }
-    })
-
-    chan.on("timer:tick", event => {
-      console.log("Timer tick", event)
     })
     return chan
 }
@@ -128,8 +123,8 @@ GameHooks = {
 
       timer = new Timer(whiteTimer, blackTimer);
 
-      timerChannel.on("timer:synchronize", payload => {
-        console.log(payload.white_time)
+      timerChannel.on("timer:synchronize", event => {
+        timer.synchronizeWithServerTime(event.white_time, event.black_time)
       })
 
       timer.startTimer();

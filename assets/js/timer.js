@@ -39,6 +39,20 @@ class Time {
         })
     }
 
+    static fromElixir(elixirTime) {
+        let splitTime = elixirTime.split(":");
+        splitTime[2] = splitTime[2].split(".");
+        splitTime = splitTime.flat().map(time => parseInt(time));
+
+        return new Time({
+            days: 0,
+            hours: splitTime[0],
+            minutes: splitTime[1],
+            seconds: splitTime[2],
+            milliseconds: splitTime[3],
+        })
+    }
+
     static currentTime() {
         return Time.fromDatetime(Date.now());
     }
@@ -62,15 +76,21 @@ class Time {
         return this.toUnitTime() === 0;
     }
 
-    static subtract(time1, time2) {
+    static unitTimeSubtract(time1, time2) {
         if (!Number.isInteger(time1)) {
             time1 = time1.toUnitTime();
         }
         if (!Number.isInteger(time2)) {
             time2 = time2.toUnitTime();
         }
-        return Time.fromDatetime(time1 - time2);
+
+        return time1 - time2;
     }
+
+    static subtract(time1, time2) {
+        return Time.fromDatetime(Time.unitTimeSubtract(time1, time2));
+    }
+
 }
 
 export class Timer {
@@ -114,6 +134,18 @@ export class Timer {
         } else if (this.blackRemainingTime.timeout()) {
             this.clearInterval();
             window.dispatchEvent(new CustomEvent("black:timeout"));
+        }
+    }
+
+    synchronizeWithServerTime(whiteTime, blackTime) {
+        const whiteRemainingTime = Time.fromElixir(whiteTime);
+        const blackRemainingTime = Time.fromElixir(blackTime);
+
+        if (Time.unitTimeSubtract(whiteRemainingTime, this.whiteRemainingTime) > 50) {
+            this.whiteRemainingTime = whiteRemainingTime;
+        }
+        if (Time.unitTimeSubtract(blackRemainingTime, this.blackRemainingTime) > 50) {
+            this.blackRemainingTime = blackRemainingTime;
         }
     }
 

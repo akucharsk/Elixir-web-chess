@@ -7,7 +7,7 @@ defmodule ChessWeb.GameLive.Show do
   alias Chess.Accounts
   alias Chess.Chessboard
   alias Chess.FENParser
-
+  alias Chess.Timer
   alias ChessWeb.Endpoint
 
   alias Phoenix.Socket.Broadcast
@@ -46,10 +46,6 @@ defmodule ChessWeb.GameLive.Show do
       halfmove_clock: halfmove_clock,
       fullmoves: fullmoves} = FENParser.game_from_fen!(game.fen)
 
-    last_move = %{
-      color: Chessboard.opposite_color(turn),
-    }
-
     socket =
     socket
     |> assign(:page_title, page_title(socket.assigns.live_action))
@@ -58,7 +54,7 @@ defmodule ChessWeb.GameLive.Show do
     |> assign(:white_player, white)
     |> assign(:black_player, black)
     |> assign(:current_player_color, color)
-    |> assign(winner: nil, resign: false, game_over: false)
+    |> assign(winner: nil, resign: false, game_over: false, timeout: false)
     |> assign(:arangement, (if color == :white, do: {white, black}, else: {black, white}))
     |> assign(:promotion, nil)
     |> assign(:last_move, %{color: nil, piece: nil, from: nil, to: nil, promotion: nil, capture: false, check: false, mate: false, draw: false})
@@ -98,7 +94,6 @@ defmodule ChessWeb.GameLive.Show do
     if socket.assigns.pending do
       game = socket.assigns.game
       Endpoint.broadcast("room:#{game.id}", "terminate", %{game_id: game.id})
-      Endpoint.broadcast("timer:#{game.id}", "terminate", %{game_id: game.id})
 
       {:ok, _} = Games.delete_game(game)
 
@@ -182,7 +177,7 @@ defmodule ChessWeb.GameLive.Show do
     {color, {piece_type, _}} = Chessboard.piece_at(socket.assigns.board, from)
     opposite = Chessboard.opposite_color(color)
 
-    {capture, value} = case Chessboard.piece_at(socket.assigns.board, to) do
+    {capture, _value} = case Chessboard.piece_at(socket.assigns.board, to) do
       nil -> {nil, 0}
       {^opposite, {piece, _}} -> {FENParser.reverse_pieces(:white)[{:white, piece}], Chessboard.piece_value(piece)}
     end
@@ -232,6 +227,18 @@ defmodule ChessWeb.GameLive.Show do
     {:noreply, socket}
   end
 
+  def handle_info(%{event: "lv:timer:timeout", payload: %{color: color}}, socket) do
+    socket =
+    case color do
+      :white -> assign(socket, :winner, socket.assigns.game.black_id)
+      :black -> assign(socket, :winner, socket.assigns.game.white_id)
+    end
+    |> assign(:game_over, true)
+    |> assign(:timeout, true)
+
+    {:noreply, socket}
+  end
+
   # Handle internal events
   # Handle the event of clicking on a highlighted square pushing the move to the client
   def handle_info({:internal, :move_piece, %{from: from, to: to, user_id: user_id}}, socket) do
@@ -245,6 +252,7 @@ defmodule ChessWeb.GameLive.Show do
       else
         Endpoint.broadcast!("room:#{socket.assigns.game.id}", "piece:move",
         %{from: from |> Tuple.to_list, to: to |> Tuple.to_list, user_id: user_id, promotion: nil})
+        Timer.switch(socket.assigns.game.id)
         socket
       end
 
@@ -315,7 +323,7 @@ defmodule ChessWeb.GameLive.Show do
     end
   end
 
-  def handle_info(payload, socket) do
+  def handle_info(_payload, socket) do
     {:noreply, socket}
   end
 

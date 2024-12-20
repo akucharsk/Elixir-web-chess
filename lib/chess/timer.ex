@@ -1,6 +1,10 @@
 defmodule Chess.Timer do
   use GenServer
 
+  @second 1000
+  @minute 60 * @second
+  @hour 60 * @minute
+
   @spec start_link(map()) :: GenServer.on_start()
   def start_link(%{white_time: _, black_time: _, game_id: _} = spec) do
     GenServer.start_link(__MODULE__, spec, name: via_tuple(spec))
