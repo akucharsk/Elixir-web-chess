@@ -9,7 +9,9 @@ defmodule Chess.Games.Game do
     field :white_score, :decimal
     field :black_score, :decimal
     field :result_reason, :string
-    
+    field :white_time, :time
+    field :black_time, :time
+
     belongs_to :winner, User, foreign_key: :winner_id
     belongs_to :white, User, foreign_key: :white_id
     belongs_to :black, User, foreign_key: :black_id

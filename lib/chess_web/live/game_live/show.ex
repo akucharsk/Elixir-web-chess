@@ -19,6 +19,7 @@ defmodule ChessWeb.GameLive.Show do
     if not connected?(socket) do
       :ok = Phoenix.PubSub.subscribe(Chess.PubSub, "room:#{id}")
     end
+    :ok = id |> String.to_integer |> Timer.play
     {:ok,
       socket
       |> assign(:current_user, user)

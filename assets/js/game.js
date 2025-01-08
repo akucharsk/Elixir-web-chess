@@ -3,6 +3,7 @@ import {Timer} from "./timer"
 
 var timer;
 var syncInterval;
+var timerChannel;
 
 function positionPromotionArea(to) {
     let promotionArea = document.getElementById("promotion-pieces")
@@ -113,7 +114,7 @@ GameHooks = {
 
       const channelName = `room:${gameID}`;
       const channel = joinGameChannel(socket, channelName, {});
-      const timerChannel = joinChannel(socket, `timer:${gameID}`, {});
+      timerChannel = joinChannel(socket, `timer:${gameID}`, {});
 
       const whiteTimer = document.getElementById("white-timer");
       const blackTimer = document.getElementById("black-timer");
@@ -128,6 +129,7 @@ GameHooks = {
       })
 
       timer.startTimer();
+      timerChannel.push("timer:play");
     },
 
     updated() {
@@ -135,13 +137,22 @@ GameHooks = {
     },
 
     destroyed() {
+      console.debug("DESTROYING");
       timer.clearInterval();
       clearInterval(syncInterval);
+      timerChannel.push("timer:stop");
     },
 
     disconnected() {
+      console.debug("DISCONNECTING")
       timer.clearInterval();
       clearInterval(syncInterval);
+      timerChannel.push("timer:stop");
+    },
+
+    reconnected() {
+      console.debug("RECONNECTED");
+      timerChannel.push("timer:play");
     }
 }
 

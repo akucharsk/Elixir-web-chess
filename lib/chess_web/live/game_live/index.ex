@@ -51,8 +51,6 @@ defmodule ChessWeb.GameLive.Index do
   @impl true
   def handle_info(%{event: "ready_game", payload: %{game_id: game_id}}, socket) do
     if game_id == socket.assigns.game.id and socket.assigns.waiting do
-      :ok = confirm_timer(socket.assigns.current_user.id, socket.assigns.game)
-
       {:noreply,
         socket
         |> assign(:waiting, false)
@@ -93,9 +91,6 @@ defmodule ChessWeb.GameLive.Index do
     case Games.fetch_ready_game(socket.assigns.current_user.id) do
       {:ready, {:ok, game}} ->
 
-        {:ok, _pid} = GameSupervisor.create_timer(Map.put(@times, :game_id, game.id))
-        :ok = confirm_timer(socket.assigns.current_user.id, game)
-
         Phoenix.PubSub.broadcast!(Chess.PubSub, "room:lobby",
           %{event: "ready_game", payload: %{game_id: game.id, white_id: game.white_id, black_id: game.black_id}}
         )
@@ -114,12 +109,4 @@ defmodule ChessWeb.GameLive.Index do
 
     {:noreply, socket}
   end
-
-  defp confirm_timer(user_id, %{white_id: user_id, id: game_id}) do
-    Timer.confirm(:white, game_id)
-  end
-  defp confirm_timer(user_id, %{black_id: user_id, id: game_id}) do
-    Timer.confirm(:black, game_id)
-  end
-
 end

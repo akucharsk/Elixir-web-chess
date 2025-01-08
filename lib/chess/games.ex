@@ -10,6 +10,7 @@ defmodule Chess.Games do
   alias Chess.Accounts
   alias Chess.Chessboard
   alias Chess.FENParser
+  alias Chess.GameSupervisor
 
   @doc """
   Returns the list of games.
@@ -80,6 +81,12 @@ defmodule Chess.Games do
     |> Repo.update()
   end
 
+  def update_game(game_id, attrs) when is_integer(game_id) do
+    game_id
+    |> get_game!()
+    |> update_game(attrs)
+  end
+
   @doc """
   Deletes a game.
 
@@ -122,6 +129,7 @@ defmodule Chess.Games do
         atom = if Enum.random([0, 1]) == 0, do: :white_id, else: :black_id
         {:pending, create_game(%{atom => user_id, fen: Chess.FENParser.base_fen})}
       game ->
+        {:ok, _pid} = GameSupervisor.create_timer(%{white_time: Time.new!(0, 10, 0), black_time: Time.new!(0, 10, 0), game_id: game.id})
         {:ready, fill_free_spot(game, user_id)}
     end
   end
@@ -137,8 +145,8 @@ defmodule Chess.Games do
   @doc """
     Checks if a game is ready to be played.
   """
-  def ready_game?(%Game{white_id: nil} = game), do: false
-  def ready_game?(%Game{black_id: nil} = game), do: false
+  def ready_game?(%Game{white_id: nil}), do: false
+  def ready_game?(%Game{black_id: nil}), do: false
   def ready_game?(_game), do: true
 
   @doc """

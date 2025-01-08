@@ -1,9 +1,6 @@
 defmodule Chess.Timer do
   use GenServer
-
-  @second 1000
-  @minute 60 * @second
-  @hour 60 * @minute
+  require Logger
 
   @spec start_link(map()) :: GenServer.on_start()
   def start_link(%{white_time: _, black_time: _, game_id: _} = spec) do
@@ -11,7 +8,7 @@ defmodule Chess.Timer do
   end
 
   defp via_tuple(%{game_id: game_id}) do
-    {:via, Registry, {Chess.Registry, {Chess.Timer, game_id}}}
+    via_tuple(game_id)
   end
 
   defp via_tuple(game_id) do
@@ -19,46 +16,60 @@ defmodule Chess.Timer do
   end
 
   @impl true
+  @spec init(map()) ::
+          {:ok,
+           %{
+             :last_time => DateTime.t(),
+             :running => boolean(),
+             :turn => :white | :black,
+             optional(any()) => any()
+           }}
   def init(state) do
     state = Map.merge(state,
-      %{confirmation: %{white: false, black: false}, turn: :white, last_time: nil}
+      %{
+        turn: :white,
+        last_time: DateTime.utc_now(),
+        running: true
+      }
     )
+    send_updates()
     {:ok, state}
   end
 
-  defp send_updates() do
-    Process.send_after(self(), :tick, 5000)
-  end
-
   # Public API
-  def confirm(color, game_id) when color in [:white, :black] do
-    GenServer.cast(via_tuple(game_id), {:confirm, color})
-  end
 
+  @spec switch(integer()) :: :ok
   def switch(game_id) do
     GenServer.cast(via_tuple(game_id), :switch)
   end
 
+  @spec pause(integer()) :: :ok
+  def pause(game_id) do
+    GenServer.cast(via_tuple(game_id), :pause)
+  end
+
+  @spec play(integer()) :: :ok
+  def play(game_id) do
+    GenServer.cast(via_tuple(game_id), :play)
+  end
+
+  @spec synchronize(integer()) :: :ok
+  def synchronize(game_id) do
+    GenServer.cast(via_tuple(game_id), :synchronize)
+  end
+
+  @spec get_times(integer()) :: map()
   def get_times(game_id) do
     GenServer.call(via_tuple(game_id), :get_times)
   end
 
+  @spec stop(integer()) :: :ok
   def stop(game_id) do
+    Logger.info("Stopping timer for #{game_id}")
     GenServer.stop(via_tuple(game_id))
   end
 
   # Server callbacks
-  @impl true
-  def handle_cast({:confirm, color}, %{confirmation: confirmation} = state) do
-    confirmation = %{confirmation | color => true}
-    state = %{state | confirmation: confirmation}
-    if Enum.all?(confirmation, fn {_color, confirmed} -> confirmed end) do
-      send_updates()
-      {:noreply, %{state | last_time: DateTime.utc_now()}}
-    else
-      {:noreply, state}
-    end
-  end
 
   @impl true
   def handle_cast(:switch, state) do
@@ -70,21 +81,49 @@ defmodule Chess.Timer do
   end
 
   @impl true
+  def handle_cast(:pause, state) do
+    Logger.info("Pausing timer for #{state.game_id}")
+    {:noreply, %{state | running: false}}
+  end
+
+  @impl true
+  def handle_cast(:play, state) do
+    Logger.info("Playing timer for #{state.game_id}")
+    send(self(), :single_tick)
+    {:noreply, %{state | running: true}}
+  end
+
+  @impl true
+  def handle_cast(:synchronize, state) do
+    :ok = Phoenix.PubSub.broadcast(Chess.PubSub, "timer:#{state.game_id}",
+      %{white_time: state.white_time, black_time: state.black_time}
+    )
+    {:noreply, state}
+  end
+
+  @impl true
   def handle_call(:get_times, _from, state) do
     state = subtract_times(state)
     {:reply, %{white_time: state.white_time, black_time: state.black_time}, state}
   end
 
   @impl true
-  def handle_info(:tick, state) do
-    state = subtract_times(state)
-
-    Phoenix.PubSub.broadcast(Chess.PubSub, "timer:#{state.game_id}",
-      %{white_time: state.white_time, black_time: state.black_time}
-    )
+  def handle_info(:tick, %{running: true} = state) do
+    state = tick(state)
 
     send_updates()
     {:noreply, state}
+  end
+
+  @impl true
+  def handle_info(:tick, state) do
+    send_updates()
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_info(:single_tick, state) do
+    {:noreply, tick(state)}
   end
 
   defp subtract_times(%{last_time: last_time} = state) do
@@ -93,5 +132,19 @@ defmodule Chess.Timer do
       :white -> %{state | white_time: Time.add(state.white_time, diff, :millisecond), last_time: DateTime.utc_now()}
       :black -> %{state | black_time: Time.add(state.black_time, diff, :millisecond), last_time: DateTime.utc_now()}
     end
+  end
+
+  defp tick(state) do
+    state = subtract_times(state)
+
+    :ok = Phoenix.PubSub.broadcast(Chess.PubSub, "timer:#{state.game_id}",
+      %{white_time: state.white_time, black_time: state.black_time}
+    )
+
+    state
+  end
+
+  defp send_updates() do
+    Process.send_after(self(), :tick, 5000)
   end
 end
