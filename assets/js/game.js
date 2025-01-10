@@ -115,6 +115,25 @@ function joinGameChannel(socket, channelName, params) {
     return chan
 }
 
+function configureNumbering() {
+  const MODEL_SQUARE = document.getElementById("0_0");
+  const padding = document.getElementById("padding");
+  
+  for (const row of document.getElementsByClassName("row-number")) {
+    row.style.height = `${MODEL_SQUARE.clientHeight}px`;
+    row.style.fontSize = `${MODEL_SQUARE.clientHeight / 3}px`;
+    row.style.width = `${MODEL_SQUARE.clientHeight / 2}px`;
+  }
+
+  for (const col of document.getElementsByClassName("col-letter")) {
+    col.style.width = `${MODEL_SQUARE.clientWidth}px`;
+    col.style.height = `${MODEL_SQUARE.clientWidth / 2}px`;
+    col.style.fontSize = `${MODEL_SQUARE.clientWidth / 3}px`;
+  }
+  padding.style.height = `${MODEL_SQUARE.clientWidth / 2}px`;
+  padding.style.width = `${MODEL_SQUARE.clientHeight / 2}px`;
+}
+
 GameHooks = {
     mounted() {
       const gameID = window.location.pathname.split("/")[2];
@@ -139,10 +158,13 @@ GameHooks = {
 
       timer.startTimer();
       timerChannel.push("timer:play");
+
+      configureNumbering();
     },
 
     updated() {
       console.log("Script updated");
+      configureNumbering();
     },
 
     destroyed() {

@@ -36,6 +36,7 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
                     <% end %>
                     </div>
                 <% end %>
+                <div id="padding"></div>
                 <%= for field <- 0..7 do %>
                     <div class="col-letter">
                     <%= if @player_color == :white, do:  <<?A + field>>, else: <<?H - field>> %>

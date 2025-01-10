@@ -71,8 +71,8 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
-  def handle_in(event, _payload, socket) do
-    IO.warn("Unhandled event: #{event}")
+  def handle_in(event, payload, socket) do
+    IO.warn("Unhandled event: #{event}, payload: #{inspect(payload)}")
     {:noreply, socket}
   end
 

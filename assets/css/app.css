@@ -6,7 +6,8 @@
 
 .chessboard {
     display: inline-block;
-    border: 2px solid #333;
+    border-top: 4px solid #333;
+    border-right: 4px solid #333;
   }
   
   .chess-row {
@@ -38,17 +39,39 @@
 
   .row-number {
     display: flex;
+    text-align: center;
+    align-items: center;
     justify-content: center;
     float: left;
     margin: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bolder;
+    border-bottom: 2px solid black;
+    border-top: 2px solid black;
+    border-left: 4px solid black;
+    border-right: 4px solid black;
   }
 
   .col-letter {
-    width: 80px;
-    display: flex;
+    text-align: center;
+    align-items: center;
     justify-content: center;
-    margin: auto;
-    float: left
+    float: left;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bolder;
+    border-top: 4px solid black;
+    border-bottom: 4px solid black;
+    border-left: 2px solid black;
+    border-right: 2px solid black;
+  }
+
+  #padding{
+    background-color: black;
+    float: left;
+    border-top: 4px solid black;
+    border-bottom: 2px solid black;
+    border-left: 2px solid black;
+    border-right: 2px solid black;
   }
 
   .promotion-piece {
