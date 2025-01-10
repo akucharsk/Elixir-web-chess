@@ -1,4 +1,5 @@
 defmodule ChessWeb.GameLive.Show do
+alias Chess.GameSupervisor
   use ChessWeb, :live_view
 
   require Logger
@@ -230,6 +231,8 @@ defmodule ChessWeb.GameLive.Show do
   end
 
   def handle_info(%{event: "lv:timer:timeout", payload: %{color: color}}, socket) do
+    GameSupervisor.terminate_timer(socket.assigns.game.id)
+
     socket =
     case color do
       :white -> assign(socket, :winner, socket.assigns.game.black_id)

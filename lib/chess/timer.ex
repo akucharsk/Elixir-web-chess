@@ -144,7 +144,6 @@ defmodule Chess.Timer do
     :ok = Phoenix.PubSub.broadcast(Chess.PubSub, "timer:#{state.game_id}",
       %{white_time: state.white_time, black_time: state.black_time}
     )
-    Logger.info("TICK for #{state.game_id}", label: "TICK")
 
     state
   end

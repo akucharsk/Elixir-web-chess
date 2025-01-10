@@ -1,5 +1,6 @@
 import {Socket} from "phoenix"
 import {Timer} from "./timer"
+import Color from "./misc/colors.js"
 
 var timer;
 var syncInterval;
@@ -15,13 +16,22 @@ function positionPromotionArea(to) {
     promotionArea.style.display = "block"
     console.log("Promotion area", promotionArea.style.top, promotionArea.style.left)
 }
+
+function highlight(square) {
+  const computedStyle = window.getComputedStyle(square);
+  const color = Color.fromRGB(computedStyle.backgroundColor);
+  const highlightColor = Color.RED();
+
+  square.originalColor = color.toHex();
+  square.style.backgroundColor = color.weightedAverage(highlightColor, 15, 13).toHex();
+}
   
 highlighted_squares = []
 
 function removeHighlights() {
     for (let sq of highlighted_squares) {
         el = document.getElementById(`${sq}`)
-        el.classList.remove("highlight")
+        el.style.backgroundColor = el.originalColor
     }
     highlighted_squares = []
 }
@@ -74,12 +84,12 @@ function joinGameChannel(socket, channelName, params) {
     })
   
     chan.on("square:click", event => {
-      const moves = event.moves
-      removeHighlights()
-      console.log(moves);
+      const moves = event.moves;
+      removeHighlights();
       for (let move of moves) {
-        square = document.getElementById(`${move[0]}_${move[1]}`).classList.add("highlight")
-        highlighted_squares.push(`${move[0]}_${move[1]}`)
+        square = document.getElementById(`${move[0]}_${move[1]}`);
+        highlight(square);
+        highlighted_squares.push(`${move[0]}_${move[1]}`);
       }
     })
   
@@ -118,14 +128,13 @@ GameHooks = {
       const whiteTimer = document.getElementById("white-timer");
       const blackTimer = document.getElementById("black-timer");
 
-      window.addEventListener("white:timeout", () => {channel.push("timer:timeout", {game_id: gameID, color: "white"})});
-      window.addEventListener("black:timeout", () => {channel.push("timer:timeout", {game_id: gameID, color: "black"})});
+      window.addEventListener("white:timeout", () => {channel.push("timer:timeout", {color: "white"})});
+      window.addEventListener("black:timeout", () => {channel.push("timer:timeout", {color: "black"})});
 
       timer = new Timer(whiteTimer, blackTimer);
 
       timerChannel.on("timer:synchronize", event => {
         timer.synchronizeWithServerTime(event.white_time, event.black_time)
-        console.log(gameID)
       })
 
       timer.startTimer();
