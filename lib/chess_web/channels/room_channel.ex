@@ -50,6 +50,7 @@ defmodule ChessWeb.RoomChannel do
   end
 
   def handle_in("terminate", _reason, socket) do
+    Phoenix.PubSub.broadcast!(Chess.PubSub, "timer:#{socket.assigns.game_id}", "terminate")
     {:stop, :leave, socket}
   end
 

@@ -136,6 +136,7 @@ defmodule ChessWeb.GameLive.Show do
 
     Endpoint.broadcast!("room:#{socket.assigns.game.id}", "piece:move",
     %{from: from, to: to, user_id: socket.assigns.current_user.id, promotion: piece})
+    Timer.switch(socket.assigns.game.id)
 
     {:noreply, assign(socket, promotion: nil)}
   end

@@ -25,6 +25,7 @@ defmodule Chess.Timer do
              optional(any()) => any()
            }}
   def init(state) do
+    Logger.info("Initializing timer for #{state.game_id}")
     state = Map.merge(state,
       %{
         turn: :white,
@@ -65,8 +66,7 @@ defmodule Chess.Timer do
 
   @spec stop(integer()) :: :ok
   def stop(game_id) do
-    Logger.info("Stopping timer for #{game_id}")
-    GenServer.stop(via_tuple(game_id))
+    GenServer.cast(via_tuple(game_id), :stop)
   end
 
   # Server callbacks
@@ -102,6 +102,11 @@ defmodule Chess.Timer do
   end
 
   @impl true
+  def handle_cast(:stop, state) do
+    {:noreply, %{state | running: false}}
+  end
+
+  @impl true
   def handle_call(:get_times, _from, state) do
     state = subtract_times(state)
     {:reply, %{white_time: state.white_time, black_time: state.black_time}, state}
@@ -117,8 +122,7 @@ defmodule Chess.Timer do
 
   @impl true
   def handle_info(:tick, state) do
-    send_updates()
-    {:noreply, state}
+    {:stop, :normal, state}
   end
 
   @impl true
@@ -140,11 +144,13 @@ defmodule Chess.Timer do
     :ok = Phoenix.PubSub.broadcast(Chess.PubSub, "timer:#{state.game_id}",
       %{white_time: state.white_time, black_time: state.black_time}
     )
+    Logger.info("TICK for #{state.game_id}", label: "TICK")
 
     state
   end
 
   defp send_updates() do
     Process.send_after(self(), :tick, 5000)
+    :ok
   end
 end

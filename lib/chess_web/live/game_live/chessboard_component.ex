@@ -9,10 +9,10 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
         ~H"""
         <div id="game-render-frame" phx-hook="Game">
 
-        <div id="timers" style="float: left; display: flex; flex-direction: column; align-items: flex-start;">
-            <div id={timer_id(@opponent_color)} class="timer"></div>
-            <div id={timer_id(@player_color)} class="timer"></div>
-        </div>
+            <div id="timers" style="float: left; display: flex; flex-direction: column; align-items: flex-start;">
+                <div id={timer_id(@opponent_color)} class="timer"></div>
+                <div id={timer_id(@player_color)} class="timer"></div>
+            </div>
 
             <div id="chessboard-border">
                 <div> <%= @arangement |> elem(1) %> </div>

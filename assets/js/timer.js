@@ -140,6 +140,7 @@ export class Timer {
     synchronizeWithServerTime(whiteTime, blackTime) {
         const whiteRemainingTime = Time.fromElixir(whiteTime);
         const blackRemainingTime = Time.fromElixir(blackTime);
+        console.log({white: whiteRemainingTime, black: blackRemainingTime});
         if (Math.abs(Time.unitTimeSubtract(whiteRemainingTime, this.whiteRemainingTime)) > 50) {
             this.whiteRemainingTime = whiteRemainingTime;
         }

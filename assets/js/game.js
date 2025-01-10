@@ -11,7 +11,7 @@ function positionPromotionArea(to) {
     var rect = promotionSquare.getBoundingClientRect()
     
     promotionArea.style.top = `${rect.top + rect.height}px`
-    promotionArea.style.left = `${rect.left - rect.width}px`
+    promotionArea.style.left = `${rect.left - rect.width / 2}px`
     promotionArea.style.display = "block"
     console.log("Promotion area", promotionArea.style.top, promotionArea.style.left)
 }
@@ -109,7 +109,6 @@ GameHooks = {
     mounted() {
       const gameID = window.location.pathname.split("/")[2];
       const socket = new Socket(`/socket`, {params: {token: window.userToken}});
-      console.log(window.location.pathname);
       socket.connect();
 
       const channelName = `room:${gameID}`;
@@ -126,6 +125,7 @@ GameHooks = {
 
       timerChannel.on("timer:synchronize", event => {
         timer.synchronizeWithServerTime(event.white_time, event.black_time)
+        console.log(gameID)
       })
 
       timer.startTimer();

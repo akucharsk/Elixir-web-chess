@@ -4,6 +4,7 @@ defmodule ChessWeb.TimerChannel do
 
   alias Chess.Timer
   alias Chess.Games
+  alias Chess.GameSupervisor
 
   @impl true
   def join("timer:" <> game_id, _payload, socket) do
@@ -14,7 +15,7 @@ defmodule ChessWeb.TimerChannel do
   @impl true
   def handle_in("timer:stop", _payload, socket) do
     :ok = update_times(socket.assigns.game_id)
-    Timer.stop(socket.assigns.game_id)
+    GameSupervisor.terminate_timer(socket.assigns.game_id)
 
     {:noreply, socket}
   end
@@ -29,7 +30,7 @@ defmodule ChessWeb.TimerChannel do
   @impl true
   def handle_in("terminate", _payload, socket) do
     :ok = update_times(socket.assigns.game_id)
-    :ok = Timer.stop(socket.assigns.game_id)
+    :ok = GameSupervisor.terminate_timer(socket.assigns.game_id)
     {:stop, :normal, socket}
   end
 

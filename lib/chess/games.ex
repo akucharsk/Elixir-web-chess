@@ -4,6 +4,7 @@ defmodule Chess.Games do
   """
 
   import Ecto.Query, warn: false
+  require Logger
   alias Chess.Repo
 
   alias Chess.Games.Game
