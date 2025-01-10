@@ -13,35 +13,43 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
                 <div id={timer_id(@opponent_color)} class="timer"></div>
                 <div id={timer_id(@player_color)} class="timer"></div>
             </div>
-
             <div id="chessboard-border">
-                <div> <%= @arangement |> elem(1) %> </div>
+                <div id="opponent-box"> <%= @arangement |> elem(1) %> </div>
                 <.promotion_pieces promotion={@promotion} color={@player_color} />
-                <div id="chessboard" class="chessboard">
-                <%= for rank <- range(@player_color) do %>
-                    <div class="row-number">
-                    <%= rank + 1 %>
-                    </div>
 
-                    <div class="chess-row">
-                    <%= for field <- range(@player_color) |> Enum.reverse do %>
-                        <div
-                        class={chess_square_class(@board, rank, field)}
-                        phx-click={"square_click"}
-                        phx-value-rank={rank}
-                        phx-value-field={field}
-                        id={"#{rank}_#{field}"}
-                        >
+                <div id="chessboard" class="chessboard">
+                    <div id="row-numbers">
+                        <%= for rank <- range(@player_color) do %>
+                            <div class="row-number">
+                            <%= rank + 1 %>
+                            </div>
+                        <% end %>
+                    </div>
+                    <div>
+                        <%= for rank <- range(@player_color) do %>
+
+                            <div class="chess-row">
+                            <%= for field <- range(@player_color) |> Enum.reverse do %>
+                                <div
+                                    class={chess_square_class(rank, field)}
+                                    phx-click={"square_click"}
+                                    phx-value-rank={rank}
+                                    phx-value-field={field}
+                                    id={"#{rank}_#{field}"}
+                                >
+                                    <div class={piece_class(@board, rank, field)} style="width: 100%; height: 100%"></div>
+                                </div>
+                            <% end %>
+                            </div>
+                        <% end %>
+                        <div id="col-letters">
+                            <%= for field <- 0..7 do %>
+                                <div class="col-letter">
+                                <%= if @player_color == :white, do:  <<?A + field>>, else: <<?H - field>> %>
+                                </div>
+                            <% end %>
                         </div>
-                    <% end %>
                     </div>
-                <% end %>
-                <div id="padding"></div>
-                <%= for field <- 0..7 do %>
-                    <div class="col-letter">
-                    <%= if @player_color == :white, do:  <<?A + field>>, else: <<?H - field>> %>
-                    </div>
-                <% end %>
                 </div>
                 <div> <%= @arangement |> elem(0) %> </div>
             </div>
@@ -77,11 +85,14 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
         |> assign(assigns)}
     end
 
-    defp chess_square_class(board, row, col) do
-        cls = if rem(row + col, 2) == 1, do: "white-square", else: "black-square"
-        case Chessboard.piece_at(board, {row, col}) do
-            nil -> cls
-            {_, {_, tag}} -> "#{cls} #{tag}"
+    defp chess_square_class(row, col) do
+        if rem(row + col, 2) == 1, do: "white-square", else: "black-square"
+    end
+
+    defp piece_class(board, rank, file) do
+        case Chessboard.piece_at(board, {rank, file}) do
+            {_, {_, tag}} -> tag
+            _ -> ""
         end
     end
 

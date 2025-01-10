@@ -1,10 +1,10 @@
 
 export default class Color{
     constructor({red: red = 0, green: green = 0, blue: blue = 0, alpha: alpha = 255} = {}) { 
-        this.red = red;
-        this.green = green;
-        this.blue = blue;
-        this.alpha = alpha;
+        this.red = Math.min(Math.max(red, 0), 255);
+        this.green = Math.min(Math.max(green, 0), 255);
+        this.blue = Math.min(Math.max(blue, 0), 255);
+        this.alpha = Math.min(Math.max(alpha, 0), 255);
     }
 
     static RED() {
@@ -57,6 +57,24 @@ export default class Color{
             green: (this.green + color.green) / 2,
             blue: (this.blue + color.blue) / 2,
             alpha: (this.alpha + color.alpha) / 2,
+        })
+    }
+
+    brightened(factor) {
+        return new Color({
+            red: this.red + 255 * factor,
+            green: this.green + 255 * factor,
+            blue: this.blue + 255 * factor,
+            alpha: this.alpha,
+        })
+    }
+
+    darkened(factor) {
+        return new Color({
+            red: this.red - 255 * factor,
+            green: this.green - 255 * factor,
+            blue: this.blue - 255 * factor,
+            alpha: this.alpha,
         })
     }
 

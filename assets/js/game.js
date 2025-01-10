@@ -117,21 +117,38 @@ function joinGameChannel(socket, channelName, params) {
 
 function configureNumbering() {
   const MODEL_SQUARE = document.getElementById("0_0");
-  const padding = document.getElementById("padding");
+  MODEL_SQUARE.style.width = `${MODEL_SQUARE.clientHeight}px`;
+  const LIGHT_SQUARE_COLOR = 
+    Color.
+    fromRGB(window.getComputedStyle(document.getElementById("0_1")).backgroundColor);
+  const DARK_SQUARE_COLOR = 
+    Color.
+    fromRGB(window.getComputedStyle(MODEL_SQUARE).backgroundColor);
+
+  const COLOR_ARRAY = [DARK_SQUARE_COLOR, LIGHT_SQUARE_COLOR];
+
+  const board = document.getElementById("chessboard");
+  const rowNumbers = document.getElementById("row-numbers");
   
+  const boardClientRect = board.getBoundingClientRect();
+  rowNumbers.style.height = `${MODEL_SQUARE.clientHeight * 8}px`;
+  var idx = 0;
   for (const row of document.getElementsByClassName("row-number")) {
     row.style.height = `${MODEL_SQUARE.clientHeight}px`;
     row.style.fontSize = `${MODEL_SQUARE.clientHeight / 3}px`;
     row.style.width = `${MODEL_SQUARE.clientHeight / 2}px`;
+    row.style.backgroundColor = COLOR_ARRAY[1 - idx % 2].toRGB();
+    idx++;
   }
 
+  idx = 0;
   for (const col of document.getElementsByClassName("col-letter")) {
     col.style.width = `${MODEL_SQUARE.clientWidth}px`;
     col.style.height = `${MODEL_SQUARE.clientWidth / 2}px`;
     col.style.fontSize = `${MODEL_SQUARE.clientWidth / 3}px`;
+    col.style.backgroundColor = COLOR_ARRAY[idx % 2].toRGB();
+    idx++;
   }
-  padding.style.height = `${MODEL_SQUARE.clientWidth / 2}px`;
-  padding.style.width = `${MODEL_SQUARE.clientHeight / 2}px`;
 }
 
 GameHooks = {
