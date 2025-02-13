@@ -2,13 +2,28 @@ import {Socket} from "phoenix"
 import {Timer} from "./timer"
 import Color from "./misc/colors.js"
 
+const WHITE = "white";
+const BLACK = "black";
+
 var timer;
 var syncInterval;
 var timerChannel;
 var channel;
+var playerColor;
 
-function pieceOnSquare(square) {
-  return square.children.length > 0 && square.children[0].classList.contains("piece");
+var turn = WHITE;
+
+function pieceOnSquare(square, pieceColor) {
+  if (square.children[0].classList.length === 0 || !square.children[0].classList.contains("piece")) {
+    return false;
+  }
+  const pieceClass = square.children[0].classList[1];
+  console.log(pieceClass.split("-")[0], pieceColor, pieceClass.split("-")[0] === pieceColor)
+  return pieceColor === pieceClass.split("-")[0];
+}
+
+function switchTurn() {
+  turn = turn === WHITE ? BLACK : WHITE;
 }
 
 function positionPromotionArea(to) {
@@ -73,6 +88,9 @@ function joinChannel(socket, channelName, params) {
     let channel = socket.channel(channelName, params)
     channel.join()
       .receive("ok", resp => { 
+        if (resp.color !== undefined) {
+          playerColor = resp.color;
+        }
         console.log("Joined successfully", resp)
       })
       .receive("error", resp => { console.log("Unable to join", resp) })
@@ -102,6 +120,7 @@ function joinGameChannel(socket, channelName, params) {
   
     chan.on("piece:move", event => {
       removeHighlights();
+      switchTurn();
       timer.switchTimer();
       chan.push("piece:move", event)
     })
@@ -128,24 +147,23 @@ function configureDragAndDrop() {
       const square = document.getElementById(`${i}_${j}`);
       const piece = square.children[0];
 
-      piece.draggable = pieceOnSquare(square);
+      piece.draggable = pieceOnSquare(square, playerColor);
       square.ondragover = function (event) {
         event.preventDefault();
       }
 
       piece.ondragstart = function (event) {
         event.stopPropagation();
-        if (pieceOnSquare(square)) {
-          const pieceTag = piece.classList[1];
-          event.dataTransfer.setData("application/json", JSON.stringify({from: [i, j], pieceTag: pieceTag}));
-          window.dispatchEvent(new CustomEvent("square:dragstart", {detail: {from: [i, j]}}));
+        const pieceTag = piece.classList[1];
+        event.dataTransfer.setData("application/json", JSON.stringify({from: [i, j], pieceTag: pieceTag}));
 
-          const img = new Image();
-          
-          img.src = `/images/${pieceTag}.png`;
-          event.dataTransfer.setDragImage(img, img.width / 2, img.height / 2);
-          piece.classList.remove(pieceTag);
-        }
+        window.dispatchEvent(new CustomEvent("square:dragstart", {detail: {from: [i, j]}}));
+
+        const img = new Image();
+        
+        img.src = `/images/${pieceTag}.png`;
+        event.dataTransfer.setDragImage(img, img.width / 2, img.height / 2);
+        piece.classList.remove(pieceTag);
       }
 
       square.ondrop = function (event) {
