@@ -165,6 +165,13 @@
     position: relative;
   }
 
+  #opponent-box{
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    margin: auto;
+  }
+
   td.move {
     justify-content: center;
     border: 2px solid #333;

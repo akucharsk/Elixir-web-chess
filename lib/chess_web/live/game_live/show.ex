@@ -174,8 +174,14 @@ alias Chess.GameSupervisor
 
   # Handle event sent by the channel. Finalize the move on the board
   def handle_info(%Broadcast{event: "lv:piece_move", payload: %{from: from, to: to, user_id: user_id, promotion: promo}}, socket) do
-    from = from ++ [nil] |> List.to_tuple
-    to = to |> List.to_tuple
+    from = case from do
+      [rank, file] -> {rank, file, nil}
+      from -> List.to_tuple(from)
+    end
+    to = case to do
+      [rank, file] -> {rank, file, nil}
+      to -> List.to_tuple(to)
+    end
 
     {color, {piece_type, _}} = Chessboard.piece_at(socket.assigns.board, from)
     opposite = Chessboard.opposite_color(color)
@@ -219,6 +225,21 @@ alias Chess.GameSupervisor
       socket
       |> assign(resign: true, game_over: true)
       |> assign(:winner, Games.opponent(socket.assigns.game, user_id))}
+  end
+
+  def handle_info(%{event: "lv:square:dragstart", payload: %{rank: rank, file: file, user_id: user_id}}, socket) do
+    Logger.info("Dragstart, #{rank}, #{file}, #{user_id}")
+    if socket.assigns.current_user.id == user_id do
+      send(self(), {:internal, :square_click, %{square: {rank, file}, user_id: user_id}})
+    end
+    {:noreply, socket}
+  end
+
+  def handle_info(%{event: "lv:square:drop:move", payload: %{from: {from_rank, from_file}, to: {to_rank, to_file}, user_id: user_id}}, socket) do
+    if socket.assigns.current_user.id == user_id do
+      send(self(), {:internal, :move_piece, %{from: {from_rank, from_file}, to: {to_rank, to_file}, user_id: user_id}})
+    end
+    {:noreply, socket}
   end
 
   def handle_info(%{event: "lv:game_loaded", payload: %{game_id: game_id}}, socket) do

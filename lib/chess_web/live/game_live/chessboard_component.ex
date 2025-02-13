@@ -36,6 +36,7 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
                                     phx-value-rank={rank}
                                     phx-value-field={field}
                                     id={"#{rank}_#{field}"}
+                                    draggable="false"
                                 >
                                     <div class={piece_class(@board, rank, field)} style="width: 100%; height: 100%"></div>
                                 </div>
@@ -91,7 +92,7 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
 
     defp piece_class(board, rank, file) do
         case Chessboard.piece_at(board, {rank, file}) do
-            {_, {_, tag}} -> tag
+            {_, {_, tag}} -> "piece #{tag}"
             _ -> ""
         end
     end

@@ -64,9 +64,23 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
-  def handle_in("timer:timeout", %{color: color}, socket) do
+  def handle_in("timer:timeout", %{"color" => color}, socket) do
     Phoenix.PubSub.broadcast(Chess.PubSub, "room:#{socket.assigns.game_id}",
       %{event: "lv:timer:timeout", payload: %{color: String.to_atom(color)}}
+    )
+    {:noreply, socket}
+  end
+
+  def handle_in("square:dragstart", %{"from" => [rank, file]}, socket) do
+    Phoenix.PubSub.broadcast(Chess.PubSub, "room:#{socket.assigns.game_id}",
+      %{event: "lv:square:dragstart", payload: %{rank: rank, file: file, user_id: socket.assigns.current_user_id}}
+    )
+    {:noreply, socket}
+  end
+
+  def handle_in("square:drop:move", %{"from" => [from_rank, from_file], "to" => [to_rank, to_file]}, socket) do
+    Phoenix.PubSub.broadcast(Chess.PubSub, "room:#{socket.assigns.game_id}",
+      %{event: "lv:square:drop:move", payload: %{from: {from_rank, from_file}, to: {to_rank, to_file}, user_id: socket.assigns.current_user_id}}
     )
     {:noreply, socket}
   end
@@ -143,6 +157,9 @@ defmodule ChessWeb.RoomChannel do
   end
 
   # LiveViev events sent from one to the other. They should be ignored in the channel.
+  def handle_info(%{event: "lv:" <> _event}, socket) do
+    {:noreply, socket}
+  end
 
   # Default handler for unhandled messages, in general it shouldn't be invoked.
   def handle_info(msg, socket) do

@@ -5,6 +5,11 @@ import Color from "./misc/colors.js"
 var timer;
 var syncInterval;
 var timerChannel;
+var channel;
+
+function pieceOnSquare(square) {
+  return square.children.length > 0 && square.children[0].classList.contains("piece");
+}
 
 function positionPromotionArea(to) {
     let promotionArea = document.getElementById("promotion-pieces")
@@ -24,6 +29,7 @@ function highlight(square) {
 
   square.originalColor = color.toHex();
   square.style.backgroundColor = color.weightedAverage(highlightColor, 15, 13).toHex();
+  square.classList.add("highlighted");
 }
   
 highlighted_squares = []
@@ -32,6 +38,7 @@ function removeHighlights() {
     for (let sq of highlighted_squares) {
         el = document.getElementById(`${sq}`)
         el.style.backgroundColor = el.originalColor
+        square.classList.remove("highlighted")
     }
     highlighted_squares = []
 }
@@ -115,6 +122,49 @@ function joinGameChannel(socket, channelName, params) {
     return chan
 }
 
+function configureDragAndDrop() {
+  for (let i = 0; i < 8; i++) {
+    for (let j = 0; j < 8; j++) {
+      const square = document.getElementById(`${i}_${j}`);
+      const piece = square.children[0];
+
+      piece.draggable = pieceOnSquare(square);
+      square.ondragover = function (event) {
+        event.preventDefault();
+      }
+
+      piece.ondragstart = function (event) {
+        event.stopPropagation();
+        if (pieceOnSquare(square)) {
+          const pieceTag = piece.classList[1];
+          event.dataTransfer.setData("application/json", JSON.stringify({from: [i, j], pieceTag: pieceTag}));
+          window.dispatchEvent(new CustomEvent("square:dragstart", {detail: {from: [i, j]}}));
+
+          const img = new Image();
+          
+          img.src = `/images/${pieceTag}.png`;
+          event.dataTransfer.setDragImage(img, img.width / 2, img.height / 2);
+          piece.classList.remove(pieceTag);
+        }
+      }
+
+      square.ondrop = function (event) {
+        event.preventDefault();
+        const data = JSON.parse(event.dataTransfer.getData("application/json"));
+        const tag = data.pieceTag;
+        const from = data.from;
+
+        if (square.classList.contains("highlighted")) {
+          window.dispatchEvent(new CustomEvent("square:drop:move", {detail: {from: from, to: [i, j]}}));
+        } else {
+          const fromSquare = document.getElementById(`${from[0]}_${from[1]}`);
+          fromSquare.classList.add(tag);
+        }
+      }
+    }
+  }
+}
+
 function configureNumbering() {
   const MODEL_SQUARE = document.getElementById("0_0");
   MODEL_SQUARE.style.width = `${MODEL_SQUARE.clientHeight}px`;
@@ -158,7 +208,7 @@ GameHooks = {
       socket.connect();
 
       const channelName = `room:${gameID}`;
-      const channel = joinGameChannel(socket, channelName, {});
+      channel = joinGameChannel(socket, channelName, {});
       timerChannel = joinChannel(socket, `timer:${gameID}`, {});
 
       const whiteTimer = document.getElementById("white-timer");
@@ -177,11 +227,13 @@ GameHooks = {
       timerChannel.push("timer:play");
 
       configureNumbering();
+      configureDragAndDrop();
     },
 
     updated() {
       console.log("Script updated");
       configureNumbering();
+      configureDragAndDrop();
     },
 
     destroyed() {
@@ -201,9 +253,18 @@ GameHooks = {
     reconnected() {
       console.debug("RECONNECTED");
       timerChannel.push("timer:play");
+      configureNumbering();
+      configureDragAndDrop();
     }
 }
 
 window.addEventListener("click", _event => {removeHighlights()})
+window.addEventListener("square:dragstart", event => {
+  channel.push("square:dragstart", {from: event.detail.from});
+})
+
+window.addEventListener("square:drop:move", event => {
+  channel.push("square:drop:move", {from: event.detail.from, to: event.detail.to});
+})
 
 export default GameHooks;
