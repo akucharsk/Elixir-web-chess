@@ -7,8 +7,18 @@ var syncInterval;
 var timerChannel;
 var channel;
 
+var playerColor;
+
 function pieceOnSquare(square) {
-  return square.children.length > 0 && square.children[0].classList.contains("piece");
+  if (square.children.length === 0) {
+    return false;
+  }
+  if (square.children[0].classList.length < 2) {
+    return false;
+  }
+  const pieceTag = square.children[0].classList[1];
+  console.log(pieceTag, playerColor, pieceTag.split("-")[0])
+  return pieceTag.split("-")[0] == playerColor;
 }
 
 function positionPromotionArea(to) {
@@ -201,31 +211,42 @@ function configureNumbering() {
   }
 }
 
+function connect() {
+  const gameID = window.location.pathname.split("/")[2];
+  const params = new URLSearchParams(window.location.search);
+  const socket = new Socket(`/socket`, {params: {token: window.userToken}});
+  socket.connect();
+
+  const channelName = `room:${gameID}`;
+  channel = joinGameChannel(socket, channelName, {});
+  timerChannel = joinChannel(socket, `timer:${gameID}`, {});
+
+  playerColor = params.get("color");
+
+}
+
+function createTimer() {
+
+  const whiteTimer = document.getElementById("white-timer");
+  const blackTimer = document.getElementById("black-timer");
+
+  timer = new Timer(whiteTimer, blackTimer);
+
+  timerChannel.on("timer:synchronize", event => {
+    timer.synchronizeWithServerTime(event.white_time, event.black_time)
+  })
+
+  timer.startTimer();
+  timerChannel.push("timer:play");
+}
+
+async function requestInitialData() {
+}
+
 GameHooks = {
     mounted() {
-      const gameID = window.location.pathname.split("/")[2];
-      const socket = new Socket(`/socket`, {params: {token: window.userToken}});
-      socket.connect();
-
-      const channelName = `room:${gameID}`;
-      channel = joinGameChannel(socket, channelName, {});
-      timerChannel = joinChannel(socket, `timer:${gameID}`, {});
-
-      const whiteTimer = document.getElementById("white-timer");
-      const blackTimer = document.getElementById("black-timer");
-
-      window.addEventListener("white:timeout", () => {channel.push("timer:timeout", {color: "white"})});
-      window.addEventListener("black:timeout", () => {channel.push("timer:timeout", {color: "black"})});
-
-      timer = new Timer(whiteTimer, blackTimer);
-
-      timerChannel.on("timer:synchronize", event => {
-        timer.synchronizeWithServerTime(event.white_time, event.black_time)
-      })
-
-      timer.startTimer();
-      timerChannel.push("timer:play");
-
+      connect();
+      createTimer();
       configureNumbering();
       configureDragAndDrop();
     },
@@ -252,13 +273,15 @@ GameHooks = {
 
     reconnected() {
       console.debug("RECONNECTED");
-      timerChannel.push("timer:play");
+      connect();
       configureNumbering();
       configureDragAndDrop();
     }
 }
 
 window.addEventListener("click", _event => {removeHighlights()})
+window.addEventListener("white:timeout", () => {channel.push("timer:timeout", {color: "white"})});
+window.addEventListener("black:timeout", () => {channel.push("timer:timeout", {color: "black"})});
 window.addEventListener("square:dragstart", event => {
   channel.push("square:dragstart", {from: event.detail.from});
 })
