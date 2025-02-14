@@ -2,6 +2,7 @@ defmodule ChessWeb.RoomChannel do
   use ChessWeb, :channel
 
   alias ChessWeb.Presence
+  alias Chess.Games
   require Logger
 
   @impl true
@@ -20,9 +21,11 @@ defmodule ChessWeb.RoomChannel do
   @impl true
   def join("room:" <> game_id, payload, socket) do
     send self(), {:after_join, game_id}
+
+    player_color = Games.get_color_for_user(String.to_integer(game_id), socket.assigns.current_user_id)
     socket
     |> assign(:game_id, String.to_integer(game_id))
-    |> authorize_socket(payload)
+    |> authorize_socket(%{color: player_color}, payload)
   end
 
   # Channels can be used in a request/response fashion
@@ -175,6 +178,13 @@ defmodule ChessWeb.RoomChannel do
   defp authorize_socket(socket, payload) do
     if authorized?(payload) do
       {:ok, socket}
+    else
+      {:error, %{reason: "unauthorized"}}
+    end
+  end
+  defp authorize_socket(socket, message, payload) do
+    if authorized?(payload) do
+      {:ok, message, socket}
     else
       {:error, %{reason: "unauthorized"}}
     end

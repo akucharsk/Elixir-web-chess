@@ -28,12 +28,12 @@ alias Chess.GameSupervisor
   end
 
   @impl true
-  def handle_params(%{"id" => id}, _, socket) do
+  def handle_params(%{"id" => id, "color" => color}, _, socket) do
     game = Games.get_game!(id)
 
     white = if game.white_id, do: Accounts.get_user!(game.white_id).username, else: nil
     black = if game.black_id, do: Accounts.get_user!(game.black_id).username, else: nil
-    color = if socket.assigns.current_user.id == game.white_id, do: :white, else: :black
+    color = String.to_atom(color)
 
     ready? = Games.ready_game?(game)
 
@@ -64,6 +64,13 @@ alias Chess.GameSupervisor
     |> assign(castling_privileges: castling_privileges, fen_en_passant: en_passant, halfmove_clock: halfmove_clock, fullmoves: fullmoves)
 
     {:noreply, socket}
+  end
+
+  def handle_params(%{"id" => id}, _, socket) do
+    game = Games.get_game!(id)
+    color = if socket.assigns.current_user.id == game.white_id, do: :white, else: :black
+
+    {:noreply, push_patch(socket, to: ~p"/games/#{id}?user_id=#{socket.assigns.current_user.id}&color=#{color}")}
   end
 
   # defp load_game!(id, socket) do
