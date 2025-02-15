@@ -22,10 +22,9 @@ defmodule ChessWeb.RoomChannel do
   def join("room:" <> game_id, payload, socket) do
     send self(), {:after_join, game_id}
 
-    player_color = Games.get_color_for_user(String.to_integer(game_id), socket.assigns.current_user_id)
     socket
     |> assign(:game_id, String.to_integer(game_id))
-    |> authorize_socket(%{color: player_color}, payload)
+    |> authorize_socket(payload)
   end
 
   # Channels can be used in a request/response fashion
@@ -50,6 +49,11 @@ defmodule ChessWeb.RoomChannel do
   def handle_in("enter_game", _payload, socket) do
     send self(), :enter_game
     {:noreply, socket}
+  end
+
+  def handle_in("game:info", _payload, socket) do
+    color = Games.get_color_for_user(socket.assigns.game_id, socket.assigns.current_user_id)
+    {:reply, {:ok, %{color: color}}, socket}
   end
 
   def handle_in("terminate", _reason, socket) do

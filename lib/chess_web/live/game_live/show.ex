@@ -28,12 +28,12 @@ alias Chess.GameSupervisor
   end
 
   @impl true
-  def handle_params(%{"id" => id, "color" => color}, _, socket) do
+  def handle_params(%{"id" => id}, _, socket) do
     game = Games.get_game!(id)
 
     white = if game.white_id, do: Accounts.get_user!(game.white_id).username, else: nil
     black = if game.black_id, do: Accounts.get_user!(game.black_id).username, else: nil
-    color = String.to_atom(color)
+    color = if socket.assigns.current_user.id == game.white_id, do: :white, else: :black
 
     ready? = Games.ready_game?(game)
 
@@ -64,13 +64,6 @@ alias Chess.GameSupervisor
     |> assign(castling_privileges: castling_privileges, fen_en_passant: en_passant, halfmove_clock: halfmove_clock, fullmoves: fullmoves)
 
     {:noreply, socket}
-  end
-
-  def handle_params(%{"id" => id}, _, socket) do
-    game = Games.get_game!(id)
-    color = if socket.assigns.current_user.id == game.white_id, do: :white, else: :black
-
-    {:noreply, push_patch(socket, to: ~p"/games/#{id}?user_id=#{socket.assigns.current_user.id}&color=#{color}")}
   end
 
   # defp load_game!(id, socket) do
@@ -244,7 +237,8 @@ alias Chess.GameSupervisor
 
   def handle_info(%{event: "lv:square:drop:move", payload: %{from: {from_rank, from_file}, to: {to_rank, to_file}, user_id: user_id}}, socket) do
     if socket.assigns.current_user.id == user_id do
-      send(self(), {:internal, :move_piece, %{from: {from_rank, from_file}, to: {to_rank, to_file}, user_id: user_id}})
+      destination = Enum.find(socket.assigns.moves, fn {row, col, _spec} -> {row, col} == {to_rank, to_file} end)
+      send(self(), {:internal, :move_piece, %{from: {from_rank, from_file}, to: destination, user_id: user_id}})
     end
     {:noreply, socket}
   end

@@ -221,7 +221,12 @@ function connect() {
   channel = joinGameChannel(socket, channelName, {});
   timerChannel = joinChannel(socket, `timer:${gameID}`, {});
 
-  playerColor = params.get("color");
+  channel.push("game:info", {})
+    .receive("ok", resp => {
+      playerColor = resp.color;
+      console.log("Player color", playerColor)
+      configureDragAndDrop();
+    });
 
 }
 
@@ -240,7 +245,11 @@ function createTimer() {
   timerChannel.push("timer:play");
 }
 
-async function requestInitialData() {
+async function requestGameInfo() {
+  const gameID = window.location.pathname.split("/")[2];
+  const response = await fetch(`/games/${gameID}/info`);
+  const data = await response.json();
+  return data;
 }
 
 GameHooks = {
@@ -248,7 +257,6 @@ GameHooks = {
       connect();
       createTimer();
       configureNumbering();
-      configureDragAndDrop();
     },
 
     updated() {

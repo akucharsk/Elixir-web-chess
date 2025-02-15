@@ -163,8 +163,8 @@ defmodule Chess.Games do
   @doc """
     Returns the in-game color for a given user id.
   """
-  def get_color_for_user(%Game{white_id: white_id}, white_id), do: :white
-  def get_color_for_user(%Game{black_id: black_id}, black_id), do: :black
+  def get_color_for_user(%Game{white_id: user_id}, user_id), do: :white
+  def get_color_for_user(%Game{black_id: user_id}, user_id), do: :black
   def get_color_for_user(game_id, user_id) when is_integer(game_id), do: get_color_for_user(get_game!(game_id), user_id)
 
 
