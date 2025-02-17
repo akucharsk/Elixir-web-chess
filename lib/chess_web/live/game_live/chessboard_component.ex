@@ -8,16 +8,15 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
     def render(assigns) do
         ~H"""
         <div id="game-render-frame" phx-hook="Game">
-
             <div id="timers" style="float: left; display: flex; flex-direction: column; align-items: flex-start;">
                 <div id={timer_id(@opponent_color)} class="timer"></div>
                 <div id={timer_id(@player_color)} class="timer"></div>
             </div>
-            <div id="chessboard-border">
+            <div id="chessboard-border" style="align-self: flex-start;">
                 <div id="opponent-box"> <%= @arangement |> elem(1) %> </div>
                 <.promotion_pieces promotion={@promotion} color={@player_color} />
 
-                <div id="chessboard" class="chessboard">
+                <div id="chessboard" class="chessboard" style="align-self: flex-start;">
                     <div id="row-numbers">
                         <%= for rank <- range(@player_color) do %>
                             <div class="row-number">
@@ -54,7 +53,7 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
                 </div>
                 <div> <%= @arangement |> elem(0) %> </div>
             </div>
-            <div id="move-register">
+            <div id="move-register" style="align-self: flex-start;">
                 <.live_component
                 module={ChessWeb.GameLive.MoveRegisterComponent}
                 id={@user.id}

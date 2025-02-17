@@ -54,29 +54,42 @@ function removeHighlights() {
 }
 
 function createMoveGroup(move_code, id) {
-    let group = document.createElement("tr")
+    let group = document.createElement("div")
     group.classList.add("move-group")
     group.id = `move-group-${id}`
 
-    let move_num = document.createElement("td")
+    let move_num = document.createElement("div")
     move_num.classList.add("move")
     move_num.id = `move-${id}-num`
     move_num.textContent = id
 
-    let white_move = document.createElement("td")
+    let white_move = document.createElement("div")
     white_move.classList.add("move")
     white_move.id = `move-${id}-white`
     white_move.textContent = move_code
 
-    let black_move = document.createElement("td")
+    let black_move = document.createElement("div")
     black_move.classList.add("move")
     black_move.id = `move-${id}-black`
+
+    if (id % 2 == 0) {
+      white_move.style.backgroundColor = "lightgray";
+      black_move.style.backgroundColor = "#aaaaaa";
+    } else {
+      white_move.style.backgroundColor = "#aaaaaa";
+      black_move.style.backgroundColor = "lightgray";
+    }
+    const recorder = document.getElementById("recorder");
+    group.style.width = `100%`;
+    move_num.style.width = "30%";
+    white_move.style.width = "35%";
+    black_move.style.width = "35%";
 
     group.appendChild(move_num)
     group.appendChild(white_move)
     group.appendChild(black_move)
 
-    document.getElementById("recorder").appendChild(group)
+    recorder.appendChild(group)
 }
 
 function joinChannel(socket, channelName, params) {
@@ -245,18 +258,22 @@ function createTimer() {
   timerChannel.push("timer:play");
 }
 
-async function requestGameInfo() {
-  const gameID = window.location.pathname.split("/")[2];
-  const response = await fetch(`/games/${gameID}/info`);
-  const data = await response.json();
-  return data;
+function configureMoveRegister() {
+  const register = document.getElementById("recorder");
+  register.style.height = `${document.getElementById("chessboard").clientHeight}px`;
+  register.style.width = `${document.getElementById("chessboard").clientWidth * 0.4}px`;
+}
+
+function configureGame() {
+  configureNumbering();
+  configureMoveRegister();
 }
 
 GameHooks = {
     mounted() {
       connect();
       createTimer();
-      configureNumbering();
+      configureGame();
     },
 
     updated() {
@@ -282,8 +299,7 @@ GameHooks = {
     reconnected() {
       console.debug("RECONNECTED");
       connect();
-      configureNumbering();
-      configureDragAndDrop();
+      configureGame();
     }
 }
 
