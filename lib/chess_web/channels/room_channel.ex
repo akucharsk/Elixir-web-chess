@@ -92,6 +92,13 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
+  def handle_in("request:moves", _payload, socket) do
+    socket.assigns.game_id
+    |> Games.list_moves()
+    |> Enum.map(fn %{move_code: move_code, move_number: move_number, color: color} -> %{move_code: move_code, move_number: move_number, color: color} end)
+    |> then(&{:reply, {:ok, %{moves: &1}}, socket})
+  end
+
   def handle_in(event, payload, socket) do
     IO.warn("Unhandled event: #{event}, payload: #{inspect(payload)}")
     {:noreply, socket}
@@ -145,7 +152,7 @@ defmodule ChessWeb.RoomChannel do
   end
 
   def handle_info(%{event: "move:register", move: move}, socket) do
-    push(socket, "move:register", %{move_code: move.move_code, color: move.color, move_count: move.move_number})
+    push(socket, "move:register", %{move_code: move.move_code, color: move.color, move_number: move.move_number})
     {:noreply, socket}
   end
 

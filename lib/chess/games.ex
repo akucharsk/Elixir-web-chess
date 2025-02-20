@@ -235,6 +235,12 @@ defmodule Chess.Games do
     end
 
   @doc """
+    Lists the moves for a given game.
+  """
+  def list_moves(%Game{moves: moves}), do: moves
+  def list_moves(game_id) when is_integer(game_id), do: list_moves(get_game!(game_id))
+
+  @doc """
   Updates a move.
 
   ## Examples

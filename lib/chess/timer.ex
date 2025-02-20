@@ -64,6 +64,15 @@ defmodule Chess.Timer do
     GenServer.call(via_tuple(game_id), :get_times)
   end
 
+  @spec get_time(integer(), :white | :black) :: Time.t()
+  def get_time(game_id, :white) do
+    get_times(game_id).white_time
+  end
+
+  def get_time(game_id, :black) do
+    get_times(game_id).black_time
+  end
+
   @spec stop(integer()) :: :ok
   def stop(game_id) do
     GenServer.cast(via_tuple(game_id), :stop)

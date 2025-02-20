@@ -17,7 +17,6 @@ function pieceOnSquare(square) {
     return false;
   }
   const pieceTag = square.children[0].classList[1];
-  console.log(pieceTag, playerColor, pieceTag.split("-")[0])
   return pieceTag.split("-")[0] == playerColor;
 }
 
@@ -92,6 +91,14 @@ function createMoveGroup(move_code, id) {
     recorder.appendChild(group)
 }
 
+function registerMove(move) {
+  if (move.color == "white") {
+    createMoveGroup(move.move_code, move.move_number);
+  } else {
+    document.getElementById(`move-${move.move_number}-black`).textContent = move.move_code;
+  }
+}
+
 function joinChannel(socket, channelName, params) {
     let channel = socket.channel(channelName, params)
     channel.join()
@@ -136,11 +143,7 @@ function joinGameChannel(socket, channelName, params) {
     })
   
     chan.on("move:register", event => {
-      if (event.color === "white") {
-        createMoveGroup(event.move_code, event.move_count)
-      } else {
-        document.getElementById(`move-${event.move_count}-black`).textContent = event.move_code
-      }
+      registerMove(event);
     })
     return chan
 }
@@ -237,7 +240,6 @@ function connect() {
   channel.push("game:info", {})
     .receive("ok", resp => {
       playerColor = resp.color;
-      console.log("Player color", playerColor)
       configureDragAndDrop();
     });
 
@@ -264,9 +266,32 @@ function configureMoveRegister() {
   register.style.width = `${document.getElementById("chessboard").clientWidth * 0.4}px`;
 }
 
+function configureTimerLayout() {
+  const timers = document.getElementById("timers");
+  const chessboard = document.getElementById("chessboard");
+
+  for (const timer of document.getElementsByClassName("timer")) {
+    timer.style.width = `${chessboard.clientWidth / 5}px`;
+    timer.style.height = `${chessboard.clientHeight / 8}px`;
+  }
+}
+
+function requestMoves() {
+  channel.push("request:moves").receive("ok", resp => {
+    if (resp.moves === undefined) {
+      throw "Moves not received!";
+    }
+    for (const move of resp.moves) {
+      registerMove(move);
+    }
+  })
+}
+
 function configureGame() {
   configureNumbering();
   configureMoveRegister();
+  requestMoves();
+  // configureTimerLayout();
 }
 
 GameHooks = {
