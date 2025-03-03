@@ -227,4 +227,14 @@
   .end-btn {
     padding-left: 10%;
     padding-right: 10%;
+    transition: ease-in-out 0.2s;
+  }
+
+  #resign-btn.end-btn:hover {
+    background-color: red;
+  }
+
+  #draw-btn.end-btn:hover {
+    background-color: cyan;
+    color: black;
   }

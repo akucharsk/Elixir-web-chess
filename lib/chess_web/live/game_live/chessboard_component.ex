@@ -58,8 +58,8 @@ defmodule ChessWeb.GameLive.ChessboardComponent do
                     <div class="flex" style="gap: 20%">
                         <div class="player-box"> <%= @arangement |> elem(0) %> </div>
                         <div id="end-buttons">
-                            <.button phx-click="resign" class="end-btn">Resign</.button>
-                            <.button phx-click="draw" class="end-btn">Offer Draw</.button>
+                            <.button phx-click="resign" class="end-btn" id="resign-btn">Resign</.button>
+                            <.button phx-click="draw" class="end-btn" id="draw-btn">Offer Draw</.button>
                         </div>
                     </div>
                 </div>
