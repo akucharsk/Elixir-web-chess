@@ -28,7 +28,8 @@ import GameHooks from "./game.js"
 Hooks = {};
 
 Hooks.Sandbox = SandboxHooks;
-Hooks.Game = GameHooks;
+Hooks.Game = GameHooks.Game;
+Hooks.Promotion = GameHooks.Promotion;
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 let liveSocket = new LiveSocket("/live", Socket, {

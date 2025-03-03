@@ -62,18 +62,18 @@ export default class Color{
 
     brightened(factor) {
         return new Color({
-            red: this.red + 255 * factor,
-            green: this.green + 255 * factor,
-            blue: this.blue + 255 * factor,
+            red: this.red + (255 - this.red) * factor,
+            green: this.green + (255 - this.green) * factor,
+            blue: this.blue + (255 - this.blue) * factor,
             alpha: this.alpha,
         })
     }
 
     darkened(factor) {
         return new Color({
-            red: this.red - 255 * factor,
-            green: this.green - 255 * factor,
-            blue: this.blue - 255 * factor,
+            red: this.red - this.red * factor,
+            green: this.green - this.green * factor,
+            blue: this.blue - this.blue * factor,
             alpha: this.alpha,
         })
     }

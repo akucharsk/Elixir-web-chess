@@ -99,6 +99,14 @@ defmodule ChessWeb.RoomChannel do
     |> then(&{:reply, {:ok, %{moves: &1}}, socket})
   end
 
+  def handle_in("promotion:info", _payload, socket) do
+    {rank, file} = case socket.assigns.promotion_square do
+      {rank, file} -> {rank, file}
+      {rank, file, _} -> {rank, file}
+    end
+    {:reply, {:ok, "#{rank}_#{file}"}, socket}
+  end
+
   def handle_in(event, payload, socket) do
     IO.warn("Unhandled event: #{event}, payload: #{inspect(payload)}")
     {:noreply, socket}
@@ -144,11 +152,12 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
-  def handle_info(%{event: "piece:promotion", payload: %{from: from, to: to, user_id: user_id}}, socket) do
+  def handle_info(%{event: "piece:promotion", payload: %{from: _from, to: to, user_id: user_id}}, socket) do
     if socket.assigns.current_user_id == user_id do
-      push(socket, "piece:promotion", %{from: from |> Tuple.to_list, to: to |> Tuple.to_list, user_id: user_id})
+      {:noreply, assign(socket, :promotion_square, to)}
+    else
+      {:noreply, socket}
     end
-    {:noreply, socket}
   end
 
   def handle_info(%{event: "move:register", move: move}, socket) do

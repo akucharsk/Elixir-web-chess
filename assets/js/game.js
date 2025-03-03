@@ -9,6 +9,10 @@ var channel;
 
 var playerColor;
 
+function getSquareWidth() {
+  return Math.round(Math.min(window.screen.height, window.screen.width) / 12);
+}
+
 function pieceOnSquare(square) {
   if (square.children.length === 0) {
     return false;
@@ -18,17 +22,6 @@ function pieceOnSquare(square) {
   }
   const pieceTag = square.children[0].classList[1];
   return pieceTag.split("-")[0] == playerColor;
-}
-
-function positionPromotionArea(to) {
-    let promotionArea = document.getElementById("promotion-pieces")
-    let promotionSquare = document.getElementById(`${to[0]}_${to[1]}`)
-    var rect = promotionSquare.getBoundingClientRect()
-    
-    promotionArea.style.top = `${rect.top + rect.height}px`
-    promotionArea.style.left = `${rect.left - rect.width / 2}px`
-    promotionArea.style.display = "block"
-    console.log("Promotion area", promotionArea.style.top, promotionArea.style.left)
 }
 
 function highlight(square) {
@@ -47,7 +40,7 @@ function removeHighlights() {
     for (let sq of highlighted_squares) {
         el = document.getElementById(`${sq}`)
         el.style.backgroundColor = el.originalColor
-        square.classList.remove("highlighted")
+        el.classList.remove("highlighted")
     }
     highlighted_squares = []
 }
@@ -124,7 +117,7 @@ function joinGameChannel(socket, channelName, params) {
       const moves = event.moves;
       removeHighlights();
       for (let move of moves) {
-        square = document.getElementById(`${move[0]}_${move[1]}`);
+        const square = document.getElementById(`${move[0]}_${move[1]}`);
         highlight(square);
         highlighted_squares.push(`${move[0]}_${move[1]}`);
       }
@@ -134,12 +127,6 @@ function joinGameChannel(socket, channelName, params) {
       removeHighlights();
       timer.switchTimer();
       chan.push("piece:move", event)
-    })
-  
-    chan.on("piece:promotion", event => {
-      removeHighlights()
-      highlighted_squares.push(`${event.to[0]}_${event.to[1]}`)
-      positionPromotionArea(event.to)
     })
   
     chan.on("move:register", event => {
@@ -160,7 +147,6 @@ function configureDragAndDrop() {
       }
 
       piece.ondragstart = function (event) {
-        event.stopPropagation();
         if (pieceOnSquare(square)) {
           const pieceTag = piece.classList[1];
           event.dataTransfer.setData("application/json", JSON.stringify({from: [i, j], pieceTag: pieceTag}));
@@ -176,6 +162,7 @@ function configureDragAndDrop() {
 
       square.ondrop = function (event) {
         event.preventDefault();
+        console.log(event.dataTransfer.getData("application/json"));
         const data = JSON.parse(event.dataTransfer.getData("application/json"));
         const tag = data.pieceTag;
         const from = data.from;
@@ -184,7 +171,8 @@ function configureDragAndDrop() {
           window.dispatchEvent(new CustomEvent("square:drop:move", {detail: {from: from, to: [i, j]}}));
         } else {
           const fromSquare = document.getElementById(`${from[0]}_${from[1]}`);
-          fromSquare.classList.add(tag);
+          fromSquare.children[0].classList.add(tag);
+          removeHighlights();
         }
       }
     }
@@ -287,14 +275,50 @@ function requestMoves() {
   })
 }
 
+function configureSquares() {
+  const squareLength = getSquareWidth();
+  console.log(window.innerWidth, window.innerHeight, squareLength);
+  for (let i = 0; i < 8; i++) {
+    for (let j = 0; j < 8; j++) {
+      const square = document.getElementById(`${i}_${j}`);
+      square.style.width = `${squareLength}px`;
+      square.style.height = `${squareLength}px`;
+
+      square.onmouseover = function(_event) {
+        if (pieceOnSquare(square)) {
+            const squareColor = Color.fromRGB(window.getComputedStyle(square).backgroundColor);
+            const darkenedColor = squareColor.darkened(0.15);
+            square.style.backgroundColor = darkenedColor.toHex();
+            square.originalColor = squareColor.toHex();
+        }
+      }
+      square.onmouseout = function(_event) {
+        if (pieceOnSquare(square)) {
+          square.style.backgroundColor = square.originalColor;
+        }
+      }
+    }
+  }
+}
+
+function configurePlayerBoxes() {
+  for (const el of document.getElementsByClassName("player-box")) {
+    const height = el.clientHeight;
+    el.style.borderRadius = `${height / 2}px`;
+  }
+}
+
 function configureGame() {
+  configureSquares();
   configureNumbering();
   configureMoveRegister();
   requestMoves();
-  // configureTimerLayout();
+  configureTimerLayout();
+  configurePlayerBoxes();
 }
 
 GameHooks = {
+  Game: {
     mounted() {
       connect();
       createTimer();
@@ -303,6 +327,7 @@ GameHooks = {
 
     updated() {
       console.log("Script updated");
+      configureSquares();
       configureNumbering();
       configureDragAndDrop();
     },
@@ -326,6 +351,28 @@ GameHooks = {
       connect();
       configureGame();
     }
+  },
+
+  Promotion: {
+    mounted() {
+      const squareLength = getSquareWidth();
+      
+      channel.push("promotion:info", {})
+        .receive("ok", resp => {
+          const promotionArea = document.getElementById("promotion");
+          for (const piece of ["queen", "rook", "bishop", "knight"]) {
+            const promoPiece = document.getElementById(`promo-${piece}`);
+            promoPiece.style.width = `${squareLength}px`;
+            promoPiece.style.height = `${squareLength}px`;
+          }
+          promotionArea.style.position = "relative";
+          const square = document.getElementById(resp);
+          const squareRect = square.getBoundingClientRect();
+          const promotionRect = promotionArea.getBoundingClientRect();
+          promotionArea.style.left = `${squareRect.left - promotionRect.left - squareLength}px`;
+        })
+    }
+  }
 }
 
 window.addEventListener("click", _event => {removeHighlights()})

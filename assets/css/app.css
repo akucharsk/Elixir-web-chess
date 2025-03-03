@@ -16,8 +16,8 @@
   }
   
   .white-square, .black-square, .promotion-piece {
-    width: 80px;
-    height: 80px;
+    /* width: 80px;
+    height: 80px; */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -66,14 +66,29 @@
     font-style: italic;
   }
 
+  .promotion {
+    position: relative;
+    display: flex;
+    width: fit-content;
+  }
+
   .promotion-piece {
     background-color: aquamarine;
+  }
+
+  .promotion-piece:hover {
+    background-color: lightblue;
+  }
+
+  #promotion-pieces {
+    width: fit-content;
   }
 
   .promotion-area {
     display: flex;
     justify-content: center;
     margin: auto;
+    width: fit-content;
   }
   
   .black-bishop, .black-king, .black-knight, .black-pawn, .black-queen, .black-rook,
@@ -181,11 +196,15 @@
     position: relative;
   }
 
-  #opponent-box{
+  .player-box{
     display: flex;
-    justify-content: center;
-    text-align: center;
-    margin: auto;
+    font-weight: bold;
+    font-size: 150%;
+    padding-left: 10%;
+    padding-right: 10%;
+    margin: 2%;
+    width: fit-content;
+    background-image: radial-gradient(ellipse, #888, #ddd);
   }
 
   div.move {
@@ -194,4 +213,18 @@
     /* width: 100%; */
     padding: 0.5rem;
     border: 1px solid #333;
+  }
+
+  #end-buttons {
+    display: flex;
+    gap: 20%;
+    height: 50%;
+    width: 100%;
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+
+  .end-btn {
+    padding-left: 10%;
+    padding-right: 10%;
   }
