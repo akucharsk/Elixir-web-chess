@@ -46,7 +46,7 @@ defmodule Chess.FENParser do
                 {:ok, board} -> {:ok, board}
                 {:error, reason} -> {:error, "Invalid FEN string! Reason: #{reason}"}
             end
-        params -> {:error, "Invalid FEN string! Not enough parameters, expected 6, got #{length(params)}"}
+        params -> {:error, "Invalid FEN string! Expected 6 parameters, got #{length(params)}"}
         end
     end
 

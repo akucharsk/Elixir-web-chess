@@ -2,6 +2,7 @@ defmodule ChessWeb.RoomChannel do
   use ChessWeb, :channel
 
   alias ChessWeb.Presence
+  alias Chess.Games
   require Logger
 
   @impl true
@@ -20,6 +21,7 @@ defmodule ChessWeb.RoomChannel do
   @impl true
   def join("room:" <> game_id, payload, socket) do
     send self(), {:after_join, game_id}
+
     socket
     |> assign(:game_id, String.to_integer(game_id))
     |> authorize_socket(payload)
@@ -49,6 +51,11 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
+  def handle_in("game:info", _payload, socket) do
+    color = Games.get_color_for_user(socket.assigns.game_id, socket.assigns.current_user_id)
+    {:reply, {:ok, %{color: color}}, socket}
+  end
+
   def handle_in("terminate", _reason, socket) do
     Phoenix.PubSub.broadcast!(Chess.PubSub, "timer:#{socket.assigns.game_id}", "terminate")
     {:stop, :leave, socket}
@@ -64,15 +71,44 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
-  def handle_in("timer:timeout", %{color: color}, socket) do
+  def handle_in("timer:timeout", %{"color" => color}, socket) do
     Phoenix.PubSub.broadcast(Chess.PubSub, "room:#{socket.assigns.game_id}",
       %{event: "lv:timer:timeout", payload: %{color: String.to_atom(color)}}
     )
     {:noreply, socket}
   end
 
-  def handle_in(event, _payload, socket) do
-    IO.warn("Unhandled event: #{event}")
+  def handle_in("square:dragstart", %{"from" => [rank, file]}, socket) do
+    Phoenix.PubSub.broadcast(Chess.PubSub, "room:#{socket.assigns.game_id}",
+      %{event: "lv:square:dragstart", payload: %{rank: rank, file: file, user_id: socket.assigns.current_user_id}}
+    )
+    {:noreply, socket}
+  end
+
+  def handle_in("square:drop:move", %{"from" => [from_rank, from_file], "to" => [to_rank, to_file]}, socket) do
+    Phoenix.PubSub.broadcast(Chess.PubSub, "room:#{socket.assigns.game_id}",
+      %{event: "lv:square:drop:move", payload: %{from: {from_rank, from_file}, to: {to_rank, to_file}, user_id: socket.assigns.current_user_id}}
+    )
+    {:noreply, socket}
+  end
+
+  def handle_in("request:moves", _payload, socket) do
+    socket.assigns.game_id
+    |> Games.list_moves()
+    |> Enum.map(fn %{move_code: move_code, move_number: move_number, color: color} -> %{move_code: move_code, move_number: move_number, color: color} end)
+    |> then(&{:reply, {:ok, %{moves: &1}}, socket})
+  end
+
+  def handle_in("promotion:info", _payload, socket) do
+    {rank, file} = case socket.assigns.promotion_square do
+      {rank, file} -> {rank, file}
+      {rank, file, _} -> {rank, file}
+    end
+    {:reply, {:ok, "#{rank}_#{file}"}, socket}
+  end
+
+  def handle_in(event, payload, socket) do
+    IO.warn("Unhandled event: #{event}, payload: #{inspect(payload)}")
     {:noreply, socket}
   end
 
@@ -116,15 +152,16 @@ defmodule ChessWeb.RoomChannel do
     {:noreply, socket}
   end
 
-  def handle_info(%{event: "piece:promotion", payload: %{from: from, to: to, user_id: user_id}}, socket) do
+  def handle_info(%{event: "piece:promotion", payload: %{from: _from, to: to, user_id: user_id}}, socket) do
     if socket.assigns.current_user_id == user_id do
-      push(socket, "piece:promotion", %{from: from |> Tuple.to_list, to: to |> Tuple.to_list, user_id: user_id})
+      {:noreply, assign(socket, :promotion_square, to)}
+    else
+      {:noreply, socket}
     end
-    {:noreply, socket}
   end
 
   def handle_info(%{event: "move:register", move: move}, socket) do
-    push(socket, "move:register", %{move_code: move.move_code, color: move.color, move_count: move.move_number})
+    push(socket, "move:register", %{move_code: move.move_code, color: move.color, move_number: move.move_number})
     {:noreply, socket}
   end
 
@@ -143,6 +180,9 @@ defmodule ChessWeb.RoomChannel do
   end
 
   # LiveViev events sent from one to the other. They should be ignored in the channel.
+  def handle_info(%{event: "lv:" <> _event}, socket) do
+    {:noreply, socket}
+  end
 
   # Default handler for unhandled messages, in general it shouldn't be invoked.
   def handle_info(msg, socket) do
@@ -158,6 +198,13 @@ defmodule ChessWeb.RoomChannel do
   defp authorize_socket(socket, payload) do
     if authorized?(payload) do
       {:ok, socket}
+    else
+      {:error, %{reason: "unauthorized"}}
+    end
+  end
+  defp authorize_socket(socket, message, payload) do
+    if authorized?(payload) do
+      {:ok, message, socket}
     else
       {:error, %{reason: "unauthorized"}}
     end

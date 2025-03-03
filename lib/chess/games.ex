@@ -160,6 +160,13 @@ defmodule Chess.Games do
     end
   end
 
+  @doc """
+    Returns the in-game color for a given user id.
+  """
+  def get_color_for_user(%Game{white_id: user_id}, user_id), do: :white
+  def get_color_for_user(%Game{black_id: user_id}, user_id), do: :black
+  def get_color_for_user(game_id, user_id) when is_integer(game_id), do: get_color_for_user(get_game!(game_id), user_id)
+
 
   alias Chess.Games.Move
 
@@ -226,6 +233,12 @@ defmodule Chess.Games do
       |> Map.update!(:color, &Atom.to_string/1)
       |> create_move
     end
+
+  @doc """
+    Lists the moves for a given game.
+  """
+  def list_moves(%Game{moves: moves}), do: moves
+  def list_moves(game_id) when is_integer(game_id), do: list_moves(get_game!(game_id))
 
   @doc """
   Updates a move.

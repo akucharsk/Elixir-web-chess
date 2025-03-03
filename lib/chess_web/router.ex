@@ -47,7 +47,6 @@ defmodule ChessWeb.Router do
 
     live "/games/:id", GameLive.Show, :show
     live "/games/:id/show/edit", GameLive.Show, :edit
-
   end
 
   scope "/", ChessWeb do

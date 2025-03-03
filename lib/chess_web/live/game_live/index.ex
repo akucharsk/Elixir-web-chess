@@ -2,12 +2,10 @@ defmodule ChessWeb.GameLive.Index do
   use ChessWeb, :live_view
 
   alias Chess.Games
-  alias Chess.Timer
 
   alias Chess.Accounts
 
   alias ChessWeb.Endpoint
-  alias Chess.GameSupervisor
 
   @times %{
     white_time: Time.new!(0, 10, 0, 0),

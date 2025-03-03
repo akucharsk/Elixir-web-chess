@@ -385,6 +385,8 @@ defmodule Chess.Chessboard do
             end)
     end
     def has_twin_attacker?(board, {from_rank, from_file, _}, {to_rank, to_file, _}), do: has_twin_attacker?(board, {from_rank, from_file}, {to_rank, to_file})
+    def has_twin_attacker?(board, {from_rank, from_file, _}, {to_rank, to_file}), do: has_twin_attacker?(board, {from_rank, from_file}, {to_rank, to_file})
+    def has_twin_attacker?(board, {from_rank, from_file}, {to_rank, to_file, _}), do: has_twin_attacker?(board, {from_rank, from_file}, {to_rank, to_file})
 
     @doc """
         Promotes a pawn to the piece specified by the code (Q, R, B, N)

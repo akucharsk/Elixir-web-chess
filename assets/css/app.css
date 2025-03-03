@@ -5,8 +5,10 @@
 /* This file is for your main application CSS */
 
 .chessboard {
-    display: inline-block;
-    border: 2px solid #333;
+    display: flex;
+    border: 4px solid black;
+    background-color: black;
+    box-shadow: 0px 0px 30px rgb(136, 91, 40);
   }
   
   .chess-row {
@@ -14,8 +16,8 @@
   }
   
   .white-square, .black-square, .promotion-piece {
-    width: 80px;
-    height: 80px;
+    /* width: 80px;
+    height: 80px; */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -36,29 +38,57 @@
     background-color: red;
   }
 
-  .row-number {
+  #row-numbers, #col-letters {
     display: flex;
+    text-align: center;
+    align-content: center;
     justify-content: center;
     float: left;
-    margin: auto;
   }
 
-  .col-letter {
-    width: 80px;
+  #row-numbers {
+    border-right: 4px solid black;
+    flex-direction: column;
+  }
+
+  #col-letters {
+    border-top: 4px solid black;
+  }
+
+  .row-number, .col-letter {
     display: flex;
+    text-align: center;
+    align-items: center;
     justify-content: center;
-    margin: auto;
-    float: left
+    float: left;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bolder;
+    font-style: italic;
+  }
+
+  .promotion {
+    position: relative;
+    display: flex;
+    width: fit-content;
   }
 
   .promotion-piece {
     background-color: aquamarine;
   }
 
+  .promotion-piece:hover {
+    background-color: lightblue;
+  }
+
+  #promotion-pieces {
+    width: fit-content;
+  }
+
   .promotion-area {
     display: flex;
     justify-content: center;
     margin: auto;
+    width: fit-content;
   }
   
   .black-bishop, .black-king, .black-knight, .black-pawn, .black-queen, .black-rook,
@@ -105,23 +135,20 @@
   }
 
   .timer {
-    width: 100px; 
-    height: 50px; 
+    width: 100%;
     margin-bottom: 5px; 
     background-color: lightgray; 
-    text-align: center; 
-    line-height: 50px;
+    text-align: center;
     font-weight: bold;
+    border-radius: 5%;
   }
 
   #timers {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
     margin-right: 10%;
-    margin-top: auto;
-    margin-bottom: auto;
-}
+    width: 100%;
+  }
 
   #move-register {
     display: flex;
@@ -134,12 +161,31 @@
     display: flex;
     justify-content: center;
     margin: auto;
+    gap: 1%;
   }
 
   #recorder {
-    justify-content: center;
-    margin: auto;
     border: 2px solid #333;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  #record-header {
+    display: flex;
+  }
+
+  #record-header div {
+    border: 2px solid #333;
+    background-color: rgb(176, 255, 255);
+    text-align: center;
+  }
+
+  .move-group {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    font-weight: bold;
   }
 
   #promotion-pieces{
@@ -150,7 +196,45 @@
     position: relative;
   }
 
-  td.move {
+  .player-box{
+    display: flex;
+    font-weight: bold;
+    font-size: 150%;
+    padding-left: 10%;
+    padding-right: 10%;
+    margin: 2%;
+    width: fit-content;
+    background-image: radial-gradient(ellipse, #888, #ddd);
+  }
+
+  div.move {
     justify-content: center;
-    border: 2px solid #333;
+    display: flex;
+    /* width: 100%; */
+    padding: 0.5rem;
+    border: 1px solid #333;
+  }
+
+  #end-buttons {
+    display: flex;
+    gap: 20%;
+    height: 50%;
+    width: 100%;
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+
+  .end-btn {
+    padding-left: 10%;
+    padding-right: 10%;
+    transition: ease-in-out 0.2s;
+  }
+
+  #resign-btn.end-btn:hover {
+    background-color: red;
+  }
+
+  #draw-btn.end-btn:hover {
+    background-color: cyan;
+    color: black;
   }
